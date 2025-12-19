@@ -1,124 +1,260 @@
 <template>
-  <div class="cal">
-    <div class="cal-head">
-      <button class="icon" @click="prevMonth">‹</button>
-      <div class="title">{{ label }}</div>
-      <button class="icon" @click="nextMonth">›</button>
-    </div>
-
-    <div class="dow">
-      <div v-for="d in ['일','월','화','수','목','금','토']" :key="d" class="dow-cell">{{ d }}</div>
-    </div>
-
-    <div v-if="loading" class="grid">
-      <div v-for="i in 42" :key="i" class="cell skeleton"></div>
-    </div>
-
-    <div v-else class="grid">
-      <button
-        v-for="cell in cells"
-        :key="cell.key"
-        class="cell"
-        :class="{ muted: !cell.inMonth, selected: cell.date === selectedDate }"
-        @click="$emit('select', cell.date)"
-      >
-        <div class="date">{{ cell.dayNum }}</div>
-        <div class="badges" v-if="cell.summary">
-          <span v-if="cell.summary.has_meal" class="badge">식</span>
-          <span v-if="cell.summary.has_exercise" class="badge">운</span>
-          <span v-if="cell.summary.has_weight" class="badge">체</span>
-          <span v-if="cell.summary.condition_emoji" class="emoji">{{ cell.summary.condition_emoji }}</span>
-          <span v-if="cell.summary.supplement_taken" class="pill">💊</span>
-          <span v-if="cell.summary.warning_flags?.length" class="warn">!</span>
-        </div>
+  <div class="month-calendar">
+    <!-- 헤더 -->
+    <div class="calendar-header">
+      <!-- 이전 달 (< 모양 아이콘) -->
+      <button class="nav-btn" @click="moveMonth(-1)" aria-label="이전 달">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      
+      <h2>{{ dayjs(month).format('YYYY년 M월') }}</h2>
+      
+      <!-- 다음 달 (> 모양 아이콘) -->
+      <button class="nav-btn" @click="moveMonth(1)" aria-label="다음 달">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
       </button>
     </div>
 
-    <p v-if="error" class="error">{{ error }}</p>
+    <div class="calendar-grid-container">
+      <!-- 요일 헤더 -->
+      <div class="weekdays">
+        <div v-for="(day, index) in ['일', '월', '화', '수', '목', '금', '토']" 
+             :key="day" 
+             class="weekday"
+             :class="{ 'sunday': index === 0, 'saturday': index === 6 }"
+        >
+          {{ day }}
+        </div>
+      </div>
+
+      <!-- 날짜 그리드 -->
+      <div class="days-grid">
+        <div v-for="n in startWeekday" :key="'empty-'+n" class="day empty"></div>
+
+        <div 
+          v-for="date in daysInMonth" 
+          :key="date"
+          class="day"
+          :class="{ 
+            'selected': date === selectedDate,
+            'today': date === today,
+            'sunday': dayjs(date).day() === 0
+          }"
+          @click="$emit('select', date)"
+        >
+          <div class="day-header">
+            <span class="day-number">{{ dayjs(date).format('D') }}</span>
+            <span v-if="date === today" class="today-badge">오늘</span>
+          </div>
+          
+          <div class="cell-content">
+            <slot name="date-cell" :date="date" :data="summaries[date] || {}"></slot>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import dayjs from "dayjs"
-import { computed, ref, watchEffect } from "vue"
+import { computed } from 'vue'
+import dayjs from 'dayjs'
 
 const props = defineProps({
-  month: { type: String, required: true }, // YYYY-MM
-  summaries: { type: Array, default: () => [] },
-  loading: { type: Boolean, default: false },
-  error: { type: String, default: "" },
-  selectedDate: { type: String, default: "" },
-})
-const emit = defineEmits(["changeMonth", "select"])
-
-const map = computed(() => {
-  const m = new Map()
-  props.summaries.forEach(s => m.set(s.date, s))
-  return m
+  month: String, 
+  summaries: { type: Object, default: () => ({}) },
+  selectedDate: String,
+  loading: Boolean,
+  error: Object
 })
 
-const label = computed(() => props.month)
+const emit = defineEmits(['changeMonth', 'select'])
 
-const cells = computed(() => {
-  const first = dayjs(props.month + "-01")
-  const start = first.startOf("month").startOf("week") // 일요일 시작
-  const end = first.endOf("month").endOf("week")
+const today = dayjs().format('YYYY-MM-DD')
 
-  const arr = []
-  let cur = start
-  while (cur.isBefore(end) || cur.isSame(end, "day")) {
-    const d = cur.format("YYYY-MM-DD")
-    arr.push({
-      key: d,
-      date: d,
-      dayNum: cur.date(),
-      inMonth: cur.month() === first.month(),
-      summary: map.value.get(d) || null,
-    })
-    cur = cur.add(1, "day")
+const startWeekday = computed(() => {
+  return dayjs(props.month + '-01').day()
+})
+
+const daysInMonth = computed(() => {
+  const start = dayjs(props.month + '-01')
+  const days = start.daysInMonth()
+  const result = []
+  for(let i=1; i<=days; i++) {
+    result.push(start.date(i).format('YYYY-MM-DD'))
   }
-  // 항상 42칸(6주) 맞추기
-  while (arr.length < 42) {
-    const last = dayjs(arr[arr.length - 1].date).add(1, "day")
-    const d = last.format("YYYY-MM-DD")
-    arr.push({
-      key: d,
-      date: d,
-      dayNum: last.date(),
-      inMonth: false,
-      summary: map.value.get(d) || null,
-    })
-  }
-  return arr.slice(0, 42)
+  return result
 })
 
-function prevMonth() {
-  const m = dayjs(props.month + "-01").add(-1, "month").format("YYYY-MM")
-  emit("changeMonth", m)
-}
-function nextMonth() {
-  const m = dayjs(props.month + "-01").add(1, "month").format("YYYY-MM")
-  emit("changeMonth", m)
+function moveMonth(delta) {
+  const newMonth = dayjs(props.month).add(delta, 'month').format('YYYY-MM')
+  emit('changeMonth', newMonth)
 }
 </script>
 
 <style scoped>
-.cal { border:1px solid #eee; border-radius:14px; padding:14px; background:#fff; }
-.cal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
-.title { font-weight:800; }
-.icon { width:34px; height:34px; border:1px solid #ddd; border-radius:10px; background:#fff; cursor:pointer; }
-.dow { display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-bottom:8px; color:#666; font-size:12px; }
-.dow-cell { text-align:center; }
-.grid { display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; }
-.cell { min-height:78px; border:1px solid #eee; border-radius:12px; background:#fff; padding:8px; text-align:left; cursor:pointer; }
-.cell.muted { opacity:0.45; }
-.cell.selected { outline:2px solid #00EEFF; }
-.date { font-weight:700; font-size:12px; color:#333; }
-.badges { margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
-.badge { font-size:11px; border:1px solid #ddd; border-radius:8px; padding:2px 6px; }
-.emoji { font-size:14px; }
-.pill { font-size:13px; }
-.warn { font-weight:900; color:#b00; }
-.error { margin-top:10px; color:#b00; font-size:13px; }
-.skeleton { background:#f5f5f5; border-color:#f5f5f5; }
+.month-calendar {
+  width: 100%;
+}
+
+/* --- 헤더 --- */
+.calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 0 10px;
+}
+
+.calendar-header h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #343a40;
+  margin: 0;
+}
+
+/* 네비게이션 버튼 스타일 (원형 아이콘) */
+.nav-btn {
+  background: white;
+  border: 1px solid #e9ecef;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #495057;
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.nav-btn:hover {
+  background: #f8f9fa;
+  border-color: #ced4da;
+  color: #212529;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.08);
+}
+
+.nav-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+/* --- 그리드 레이아웃 --- */
+.calendar-grid-container {
+  border-top: 1px solid #dee2e6;
+  border-left: 1px solid #dee2e6;
+}
+
+/* 요일 헤더 */
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: #f8f9fa;
+}
+
+.weekday {
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+  padding: 10px 0;
+  border-right: 1px solid #dee2e6;
+  border-bottom: 1px solid #dee2e6;
+  background: #f8f9fa;
+}
+.weekday.sunday { color: #ff6b6b; }
+.weekday.saturday { color: #4dabf7; }
+
+/* 날짜 그리드 */
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0;
+}
+
+.day {
+  background: white;
+  aspect-ratio: 1 / 1; /* 1:1 비율 유지 */
+  padding: 8px;
+  cursor: pointer;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  transition: background-color 0.2s;
+  
+  /* 테두리 설정: 컨테이너의 Top/Left와 합쳐져 완전한 격자 형성 */
+  border-right: 1px solid #dee2e6;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.day:hover {
+  background-color: #f8f9fa;
+  z-index: 1;
+}
+
+/* 선택된 날짜 스타일 */
+.day.selected {
+  background-color: #e9ffec;
+  box-shadow: inset 0 0 0 2px #35da43; /* 내부 테두리로 강조하여 격자선 유지 */
+}
+
+.day.sunday .day-number { color: #ff6b6b; }
+
+/* 날짜 숫자 헤더 */
+.day-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px; /* 간격 줄임 */
+}
+
+.day-number {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #495057;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.day.today .day-number {
+  background: #0a750a;
+  color: rgb(255, 255, 255);
+  font-weight: 700;
+}
+
+.today-badge {
+  font-size: 10px;
+  font-weight: bold;
+  color: #49a741;
+  background: rgba(61, 121, 94, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+/* [수정] 내용물을 중앙에 배치 */
+.cell-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center; /* 수직 중앙 정렬 */
+  align-items: center;     /* 수평 중앙 정렬 */
+  width: 100%;
+  overflow: hidden;
+}
+
+.empty {
+  background: #fdfdfd;
+  cursor: default;
+}
 </style>

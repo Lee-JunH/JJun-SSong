@@ -1,25 +1,26 @@
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "AritaDotumKR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, "Noto Sans KR", Arial, sans-serif;
+
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  /* 기존 템플릿 값들 유지해도 되지만,
+     아래 4번에서 레이아웃/색상은 정리 권장 */
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
+
 a {
   font-weight: 500;
-  color: #646cff;
+  color: #252525;
   text-decoration: inherit;
 }
 a:hover {
-  color: #535bf2;
+  color: #252525;
 }
 
 body {
@@ -76,4 +77,13 @@ button:focus-visible {
   button {
     background-color: #f9f9f9;
   }
+}
+
+/* src/styles.css 맨 위에 추가 */
+@font-face {
+  font-family: "AritaDotumKR";
+  src: url("./assets/fonts/AritaDotumKR-Medium.ttf") format("truetype");
+  font-weight: 500; /* Medium */
+  font-style: normal;
+  font-display: swap;
 }
