@@ -1,0 +1,10 @@
+[
+  {"name":"현미밥", "serving_g":100, "kcal":165, "carb_g":35.0, "protein_g":3.4, "fat_g":1.2, "sugar_g":0.2, "sodium_mg":2},
+  {"name":"닭가슴살(구이)", "serving_g":100, "kcal":165, "carb_g":0.0, "protein_g":31.0, "fat_g":3.6, "sugar_g":0.0, "sodium_mg":74},
+  {"name":"바나나", "serving_g":100, "kcal":89, "carb_g":22.8, "protein_g":1.1, "fat_g":0.3, "sugar_g":12.2, "sodium_mg":1},
+  {"name":"그릭요거트(무가당)", "serving_g":100, "kcal":97, "carb_g":3.6, "protein_g":9.0, "fat_g":5.0, "sugar_g":3.6, "sodium_mg":36},
+  {"name":"김치", "serving_g":100, "kcal":18, "carb_g":2.4, "protein_g":1.1, "fat_g":0.2, "sugar_g":1.6, "sodium_mg":498},
+  {"name":"라면(조리)", "serving_g":100, "kcal":152, "carb_g":20.7, "protein_g":3.6, "fat_g":6.2, "sugar_g":1.2, "sodium_mg":680},
+  {"name":"아메리카노", "serving_g":200, "kcal":5, "carb_g":0.7, "protein_g":0.3, "fat_g":0.0, "sugar_g":0.0, "sodium_mg":5},
+  {"name":"샐러드(드레싱없음)", "serving_g":150, "kcal":80, "carb_g":10.0, "protein_g":3.0, "fat_g":3.0, "sugar_g":3.0, "sodium_mg":60}
+]
