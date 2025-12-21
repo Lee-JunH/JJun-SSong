@@ -25,7 +25,12 @@
         <div class="box">
           <div class="box-title">컨디션</div>
           <div class="inline">
-            <input v-model="condEmoji" placeholder="😊" class="small" />
+            <select v-model="condEmoji" class="small">
+              <option value="">선택</option>
+              <option value="😊">😊 좋음</option>
+              <option value="🙂">🙂 보통</option>
+              <option value="😣">😣 나쁨</option>
+            </select>
             <input v-model="condNote" placeholder="메모(선택)" class="grow" />
             <button class="btn" @click="saveCondition">저장</button>
           </div>
@@ -51,22 +56,29 @@
           <input v-model="foodName" placeholder="음식명" class="grow" />
           <input v-model.number="grams" type="number" step="1" placeholder="g" class="small" />
         </div>
-        <div class="inline" style="margin-top:8px;">
-          <input v-model.number="kcal" type="number" step="1" placeholder="kcal" class="small" />
-          <input v-model.number="carb" type="number" step="0.1" placeholder="탄(g)" class="small" />
-          <input v-model.number="protein" type="number" step="0.1" placeholder="단(g)" class="small" />
-          <input v-model.number="fat" type="number" step="0.1" placeholder="지(g)" class="small" />
+        
+        <!-- 변경: 영양성분 입력을 위한 그리드 레이아웃 적용 -->
+        <div class="nutrition-row">
+          <input v-model.number="kcal" type="number" step="1" placeholder="kcal" />
+          <input v-model.number="carb" type="number" step="0.1" placeholder="탄(g)" />
+          <input v-model.number="protein" type="number" step="0.1" placeholder="단(g)" />
+          <input v-model.number="fat" type="number" step="0.1" placeholder="지(g)" />
           <button class="btn" @click="addMeal">추가</button>
         </div>
 
         <div class="list" v-if="detail.meals?.length">
-          <div v-for="m in detail.meals" :key="m.id" class="item">
-            <div class="meta">
-              <div class="t">{{ mealLabel(m.meal_type) }} · {{ m.name }} ({{ m.grams }}g)</div>
-              <div class="s">{{ m.kcal.toFixed(0) }} kcal</div>
+          <template v-for="type in ['breakfast', 'lunch', 'dinner']" :key="type">
+            <div v-if="getMeals(type).length > 0" class="meal-group">
+              <div class="meal-divider">{{ mealLabel(type) }}</div>
+              <div v-for="m in getMeals(type)" :key="m.id" class="item">
+                <div class="meta">
+                  <div class="t">{{ m.name }} ({{ m.grams }}g)</div>
+                  <div class="s">{{ m.kcal.toFixed(0) }} kcal</div>
+                </div>
+                <button class="x" @click="delMeal(m.id)">삭제</button>
+              </div>
             </div>
-            <button class="x" @click="delMeal(m.id)">삭제</button>
-          </div>
+          </template>
         </div>
         <div v-else class="muted">아직 식단 기록이 없습니다.</div>
       </div>
@@ -87,13 +99,26 @@ const detail = computed(() => day.detail)
 const loading = computed(() => day.loading)
 const error = computed(() => day.error)
 
-watch(() => props.date, async (d) => {
-  if (d) await day.fetchDay(d)
-}, { immediate: true })
-
 const condEmoji = ref("")
 const condNote = ref("")
 const weight = ref(null)
+
+const mealType = ref("breakfast")
+const foodName = ref("")
+const grams = ref(null)
+const kcal = ref(null)
+const carb = ref(null)
+const protein = ref(null)
+const fat = ref(null)
+
+watch(() => props.date, async (d) => {
+  if (d) {
+    await day.fetchDay(d)
+    grams.value = null
+    foodName.value = ""
+    kcal.value = carb.value = protein.value = fat.value = null
+  }
+}, { immediate: true })
 
 watch(detail, (v) => {
   if (!v) return
@@ -102,16 +127,12 @@ watch(detail, (v) => {
   weight.value = v.weight?.weight_kg ?? null
 }, { immediate: true })
 
-const mealType = ref("breakfast")
-const foodName = ref("")
-const grams = ref(100)
-const kcal = ref(0)
-const carb = ref(0)
-const protein = ref(0)
-const fat = ref(0)
-
 function mealLabel(t) {
   return t === "breakfast" ? "아침" : t === "lunch" ? "점심" : "저녁"
+}
+
+function getMeals(type) {
+  return detail.value.meals?.filter(m => m.meal_type === type) || []
 }
 
 async function saveCondition() {
@@ -141,7 +162,8 @@ async function addMeal() {
     sodium: 0,
   })
   foodName.value = ""
-  kcal.value = carb.value = protein.value = fat.value = 0
+  grams.value = null
+  kcal.value = carb.value = protein.value = fat.value = null
 }
 
 async function delMeal(id) {
@@ -158,14 +180,61 @@ async function delMeal(id) {
 .stat { border:1px solid #eee; border-radius:12px; padding:10px; }
 .k { font-size:12px; color:#666; }
 .v { margin-top:4px; font-weight:800; }
-.row { display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px; }
+
+.row { display:grid; grid-template-columns: 2.2fr 1fr; gap:10px; margin-bottom:10px; }
+
 .box { border:1px solid #eee; border-radius:12px; padding:12px; }
 .box-title { font-weight:800; margin-bottom:8px; }
 .inline { display:flex; gap:8px; align-items:center; }
 .small { width:120px; padding:8px; border:1px solid #ddd; border-radius:10px; }
 .grow { flex:1; padding:8px; border:1px solid #ddd; border-radius:10px; }
-.btn { padding:8px 12px; border:1px solid #ddd; background:#fff; border-radius:10px; cursor:pointer; }
+
+.btn { 
+  padding:8px 12px; 
+  border:1px solid #ddd; 
+  background:#fff; 
+  border-radius:10px; 
+  cursor:pointer; 
+  white-space: nowrap; 
+  flex-shrink: 0; 
+}
+
+/* 추가: 영양성분 입력줄 그리드 스타일 */
+.nutrition-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr auto;
+  gap: 8px;
+  margin-top: 8px;
+}
+/* 영양성분 입력창 스타일 (기존 small/grow 스타일 적용) */
+.nutrition-row input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
 .list { margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+
+.meal-group { display: flex; flex-direction: column; gap: 8px; }
+.meal-divider { 
+  font-size: 13px; 
+  font-weight: 700; 
+  color: #888; 
+  margin-top: 8px; 
+  margin-bottom: 2px;
+  padding-left: 4px;
+  display: flex;
+  align-items: center;
+}
+.meal-divider::after { 
+  content: ""; 
+  flex: 1; 
+  height: 1px; 
+  background: #eee; 
+  margin-left: 8px; 
+}
+
 .item { display:flex; justify-content:space-between; align-items:center; border:1px solid #eee; border-radius:12px; padding:10px; }
 .meta .t { font-weight:700; }
 .meta .s { color:#666; font-size:12px; margin-top:2px; }

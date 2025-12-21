@@ -87,3 +87,12 @@ button:focus-visible {
   font-style: normal;
   font-display: swap;
 }
+
+
+@font-face {
+  font-family: "AritaDotumKR";
+  src: url("@/assets/fonts/AritaDotumKR-Bold.ttf") format("truetype");
+  font-weight: 800; /* 또는 700 */
+  font-style: normal;
+  font-display: swap;
+}

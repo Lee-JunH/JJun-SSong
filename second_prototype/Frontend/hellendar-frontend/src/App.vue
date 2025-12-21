@@ -2,27 +2,28 @@
   <div class="layout">
     <header class="header">
       <nav class="nav">
+        <!-- 로고 (기존 코드 유지) -->
         <div class="brand" role="button" tabindex="0" @click="$router.push('/')">
           <img class="brand-logo" :src="logoUrl" alt="헬린더 로고" />
-          <!-- 필요하면 텍스트도 같이 -->
-          <!-- <span class="brand-text">헬린더</span> -->
         </div>
 
-
-        <div class="links">
-          <RouterLink to="/">홈</RouterLink>
-          <RouterLink to="/features">기능소개</RouterLink>
-          <RouterLink to="/start">시작하기</RouterLink>
-          <RouterLink to="/my">마이헬린더</RouterLink>
+        <!-- 중앙 정렬된 메뉴 링크들 -->
+        <div class="links" aria-label="메인 메뉴">
+          <RouterLink to="/" class="nav-link" exact-active-class="is-active">홈</RouterLink>
+          <RouterLink to="/features" class="nav-link" active-class="is-active">기능소개</RouterLink>
+          <RouterLink to="/start" class="nav-link" active-class="is-active">시작하기</RouterLink>
+          <RouterLink to="/my" class="nav-link" active-class="is-active">마이헬린더</RouterLink>
         </div>
+
+        <!-- 우측 인증 버튼 -->
         <div class="auth">
           <template v-if="auth.me">
             <span class="me">{{ auth.me.email }}</span>
-            <button class="btn" @click="onLogout">로그아웃</button>
+            <button class="btn logout-btn" @click="onLogout">로그아웃</button>
           </template>
           <template v-else>
-            <RouterLink to="/login">로그인</RouterLink>
-            <RouterLink to="/signup">회원가입</RouterLink>
+            <RouterLink to="/login" class="auth-link">로그인</RouterLink>
+            <RouterLink to="/signup" class="btn signup-btn">회원가입</RouterLink>
           </template>
         </div>
       </nav>
@@ -46,90 +47,158 @@ const auth = useAuthStore()
 const onLogout = () => auth.logout()
 </script>
 
-
 <style scoped>
-/* 헤더 높이(원하는 값으로 조정) */
+/* --- 레이아웃 설정 --- */
 .layout {
-  --header-h: 56px; /* 56~72px 추천 */
+  --header-h: 64px; /* 헤더 높이 */
+  --primary-color: #DB1F4B; /* 포인트 컬러 */
+  
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background-color: #f8f9fa;
 }
 
-/* sticky 헤더는 “위에 떠있으므로” 배경/보더 확실히 + 겹침 방지 */
+/* --- Header & Nav --- */
 .header {
   height: var(--header-h);
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
   background: #fff;
-
   position: sticky;
   top: 0;
-  z-index: 1000;           /* 캘린더보다 확실히 위 */
+  z-index: 1000;
 }
 
-/* nav가 헤더 높이를 꽉 채우도록 */
 .nav {
   height: 100%;
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 16px;         /* 세로 padding 제거하고 height로 맞춤 */
+  padding: 0 24px;
+  
   display: flex;
   align-items: center;
-  gap: 16px;
+  justify-content: space-between; /* 양 끝 정렬 */
+  position: relative; /* 자식 요소(links)의 absolute 기준점 */
 }
 
+/* 로고 영역 */
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   cursor: pointer;
   user-select: none;
+  z-index: 10; /* 링크보다 위에 위치 */
 }
 
 .brand-logo {
-  height: 34px;     /* 네브바 높이에 맞춰 조정: 28~40px */
+  height: 34px; /* 로고 높이 */
   width: auto;
   display: block;
 }
 
-.brand:focus-visible {
-  outline: 2px solid #dee2e6;
-  outline-offset: 4px;
-  border-radius: 8px;
+/* --- 중앙 정렬 링크 스타일 --- */
+.links {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%); /* 정확한 중앙 정렬 */
+  
+  height: 100%; /* 헤더 높이 꽉 채우기 */
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.links { display: flex; gap: 12px; flex: 1; }
-.auth { display: flex; gap: 10px; align-items: center; }
-.me { font-size: 12px; color: #666; }
+.nav-link {
+  text-decoration: none;
+  color: #868e96;
+  font-size: 1rem;
+  font-weight: 500;
+  
+  height: 100%; /* 부모 높이 상속 */
+  display: flex;
+  align-items: center; /* 텍스트 세로 중앙 */
+  padding: 0 16px;
+  
+  position: relative;
+  transition: all 0.2s ease;
+  border-bottom: 3px solid transparent; /* 미리 투명 테두리 공간 확보 */
+}
+
+/* 호버 효과 */
+.nav-link:hover {
+  color: #495057;
+  background-color: rgba(0,0,0,0.02);
+}
+
+/* 활성화(Active) 상태 스타일 */
+.nav-link.is-active {
+  color: var(--primary-color);
+  font-weight: 700;
+  border-bottom-color: var(--primary-color); /* 테두리 색상 변경 */
+}
+
+/* --- 우측 인증 영역 --- */
+.auth {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  z-index: 10; /* 링크보다 위에 위치 */
+}
+
+.auth-link {
+  text-decoration: none;
+  color: #495057;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+.auth-link:hover { color: #212529; }
+
 .btn {
-  padding: 6px 10px;
-  border: 1px solid #ddd;
-  background: #fff;
-  border-radius: 8px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
 }
-a.router-link-active { font-weight: 700; }
 
-/* main은 원래 padding-top을 줄 필요 없음(헤더가 레이아웃을 차지하므로).
-   다만 sticky+transform 등 영향으로 겹침이 생기는 프로젝트가 있어 안전장치로 둠 */
+.logout-btn {
+  background: #f1f3f5;
+  color: #495057;
+}
+.logout-btn:hover { background: #e9ecef; }
+
+.signup-btn {
+  background: var(--primary-color);
+  color: white;
+}
+.signup-btn:hover {
+  background: #c91b42; /* 조금 더 진한 색 */
+  transform: translateY(-1px);
+}
+
+.me { font-size: 0.85rem; color: #868e96; }
+
+/* --- Main Content --- */
 .main {
   flex: 1;
-  max-width: 1100px;
   width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 18px 16px;
-
-  /* 안전장치: 캘린더 등 내부 요소가 header를 침범하는 경우가 있어 방지 */
+  padding: 30px 20px;
   position: relative;
-  z-index: 0;
 }
 
-/* footer */
+/* --- Footer --- */
 .footer {
   border-top: 1px solid #eee;
-  padding: 16px;
+  padding: 24px;
   text-align: center;
-  color: #888;
-  font-size: 12px;
+  color: #adb5bd;
+  font-size: 0.85rem;
+  background: #fff;
 }
 </style>
