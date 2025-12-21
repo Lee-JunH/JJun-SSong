@@ -8,7 +8,9 @@
 
     <div class="steps" aria-label="시작하기 3단계">
       <article class="step">
-        <div class="art">STEP1 이미지 영역</div>
+        <div class="art">
+          <img class="art-img" :src="start1" alt="STEP 1 회원가입 안내 이미지" />
+        </div>
         <div class="meta">
           <div class="step-no">STEP 1</div>
           <div class="step-title">회원가입</div>
@@ -17,7 +19,9 @@
       </article>
 
       <article class="step">
-        <div class="art">STEP2 이미지 영역</div>
+        <div class="art">
+          <img class="art-img" :src="start2" alt="STEP 2 프로필 설정 안내 이미지" />
+        </div>
         <div class="meta">
           <div class="step-no">STEP 2</div>
           <div class="step-title">프로필 설정</div>
@@ -26,7 +30,9 @@
       </article>
 
       <article class="step">
-        <div class="art">STEP3 이미지 영역</div>
+        <div class="art">
+          <img class="art-img" :src="start3" alt="STEP 3 첫 기록 시작 안내 이미지" />
+        </div>
         <div class="meta">
           <div class="step-no">STEP 3</div>
           <div class="step-title">첫 기록 시작</div>
@@ -38,7 +44,12 @@
 </template>
 
 <script setup>
+// 확장자(.png/.jpg/.svg)는 실제 파일에 맞춰 수정하세요.
+import start1 from "@/assets/start_1.png"
+import start2 from "@/assets/start_2.png"
+import start3 from "@/assets/start_3.png"
 </script>
+
 
 <style scoped>
 .start {
@@ -60,13 +71,21 @@
 
 .step { text-align: center; }
 .art {
-  background: #f2dee3;
+
   border-radius: 8px;
   min-height: 330px;
   display: grid;
   place-items: center;
+  overflow: hidden; /* 이미지가 넘칠 때 깔끔하게 */
 }
 
+.art-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain; /* 전체가 보이게(잘림 없음) */
+  /* 만약 "프레임을 꽉 채우고 잘려도 된다"면 cover로 변경 */
+  /* object-fit: cover; */
+}
 .meta { margin-top: 24px; }
 .step-no { font-size: 32px; font-weight: 800; color: #db1f4b; font-style: "AritaDotumKR-Bold";}
 .step-title { margin-top: 12px; font-size: 20px; font-weight: 800; }
