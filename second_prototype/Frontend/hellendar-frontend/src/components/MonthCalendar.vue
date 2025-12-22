@@ -70,7 +70,7 @@ const props = defineProps({
   summaries: { type: Object, default: () => ({}) },
   selectedDate: String,
   loading: Boolean,
-  error: Object
+  error: { type: String, default: "" }
 })
 
 const emit = defineEmits(['changeMonth', 'select'])

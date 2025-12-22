@@ -8,6 +8,13 @@ export const useCalendarStore = defineStore("calendar", {
     loading: false,
     error: "",
   }),
+  getters: {
+    byDate: (state) => {
+      const map = {}
+      for (const d of state.days) map[d.date] = d
+      return map
+    },
+  },
   actions: {
     async fetchMonth(month) {
       this.loading = true
@@ -22,5 +29,17 @@ export const useCalendarStore = defineStore("calendar", {
         this.loading = false
       }
     },
+    async patchToggles(date, patch) {
+      await http.patch(`/days/${date}/toggles/`, patch)
+
+      // 서버 저장 후 캘린더 UI 즉시 반영
+      const idx = this.days.findIndex((x) => x.date === date)
+      if (idx !== -1) {
+        this.days[idx] = { ...this.days[idx], ...patch }
+      } else {
+        this.days.push({ date, ...patch })
+      }
+    },
+
   },
 })

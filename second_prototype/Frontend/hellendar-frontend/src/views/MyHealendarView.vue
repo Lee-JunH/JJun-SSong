@@ -23,7 +23,7 @@
       <div class="calendar-wrapper">
         <MonthCalendar
           :month="month"
-          :summaries="cal.days"
+          :summaries="cal.byDate"
           :loading="cal.loading"
           :error="cal.error"
           :selectedDate="selectedDate"
@@ -117,9 +117,11 @@ function closeModal() {
 
 async function toggleMeal(date, mealType) {
   console.log(`${date}의 ${mealType} 상태 변경`)
-  // 데이터 초기화 시 snack 대신 nutrition 사용
-  if (!cal.days[date]) cal.days[date] = { breakfast: false, lunch: false, dinner: false, nutrition: false }
-  cal.days[date][mealType] = !cal.days[date][mealType]
+
+  const cur = cal.byDate[date] || {}
+  const next = !Boolean(cur[mealType])
+
+  await cal.patchToggles(date, { [mealType]: next })
 }
 </script>
 
