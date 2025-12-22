@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.db.models import Sum
 
+
 class DayRecord(models.Model):
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     date = models.DateField()
@@ -14,8 +15,11 @@ class DayRecord(models.Model):
     total_sugar = models.FloatField(default=0)
     total_sodium = models.FloatField(default=0)
 
+    breakfast = models.BooleanField(default=False)
+    lunch = models.BooleanField(default=False)
+    dinner = models.BooleanField(default=False)
+    nutrition = models.BooleanField(default=False)
     condition_emoji = models.CharField(max_length=10, blank=True)  # 😊 😐 😫 등
-    supplement_taken = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("user", "date")
@@ -36,15 +40,24 @@ class DayRecord(models.Model):
         self.total_fat = agg["fat"] or 0
         self.total_sugar = agg["sugar"] or 0
         self.total_sodium = agg["sodium"] or 0
-        self.save(update_fields=[
-            "total_kcal","total_carb","total_protein","total_fat","total_sugar","total_sodium"
-        ])
+        self.save(
+            update_fields=[
+                "total_kcal",
+                "total_carb",
+                "total_protein",
+                "total_fat",
+                "total_sugar",
+                "total_sodium",
+            ]
+        )
+
 
 MEAL_TYPES = [
     ("breakfast", "아침"),
     ("lunch", "점심"),
     ("dinner", "저녁"),
 ]
+
 
 class MealItem(models.Model):
     day = models.ForeignKey(DayRecord, related_name="meals", on_delete=models.CASCADE)
@@ -63,18 +76,27 @@ class MealItem(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class ExerciseItem(models.Model):
-    day = models.ForeignKey(DayRecord, related_name="exercises", on_delete=models.CASCADE)
+    day = models.ForeignKey(
+        DayRecord, related_name="exercises", on_delete=models.CASCADE
+    )
     name = models.CharField(max_length=100)
     minutes = models.PositiveIntegerField(default=0)
     burned_kcal = models.FloatField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
+
 class WeightEntry(models.Model):
-    day = models.OneToOneField(DayRecord, related_name="weight", on_delete=models.CASCADE)
+    day = models.OneToOneField(
+        DayRecord, related_name="weight", on_delete=models.CASCADE
+    )
     weight_kg = models.FloatField()
 
+
 class ConditionEntry(models.Model):
-    day = models.OneToOneField(DayRecord, related_name="condition", on_delete=models.CASCADE)
+    day = models.OneToOneField(
+        DayRecord, related_name="condition", on_delete=models.CASCADE
+    )
     emoji = models.CharField(max_length=10)
     note = models.TextField(blank=True)

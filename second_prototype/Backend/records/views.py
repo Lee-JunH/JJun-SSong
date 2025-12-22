@@ -116,16 +116,35 @@ class UpsertConditionView(APIView):
         day.save(update_fields=["condition_emoji"])
         return Response({"emoji": obj.emoji, "note": obj.note})
 
-class ToggleSupplementView(APIView):
+class UpdateMealTogglesView(APIView):
     """
-    PUT /api/days/YYYY-MM-DD/supplements body: { supplement_taken: true/false }
+    PATCH /api/days/YYYY-MM-DD/toggles
+    body: {"breakfast": true} / {"lunch": false} / {"dinner": true} / {"nutrition": true}
     """
-    def put(self, request, day_str):
+    def patch(self, request, day_str):
         d = parse_date(day_str)
         if not d:
             return Response({"detail": "Invalid date"}, status=400)
+
         day = get_or_create_day(request.user, d)
-        taken = bool(request.data.get("supplement_taken", False))
-        day.supplement_taken = taken
-        day.save(update_fields=["supplement_taken"])
-        return Response({"supplement_taken": day.supplement_taken})
+
+        allowed = {"breakfast", "lunch", "dinner", "nutrition"}
+        updated = []
+        for key in allowed:
+            if key in request.data:
+                setattr(day, key, bool(request.data[key]))
+                updated.append(key)
+
+        if not updated:
+            return Response({"detail": "No valid fields"}, status=400)
+
+        day.save(update_fields=updated)
+
+        return Response({
+            "date": str(day.date),
+            "breakfast": day.breakfast,
+            "lunch": day.lunch,
+            "dinner": day.dinner,
+            "nutrition": day.nutrition,
+        })
+

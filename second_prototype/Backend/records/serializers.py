@@ -1,25 +1,42 @@
 from rest_framework import serializers
 from .models import DayRecord, MealItem, ExerciseItem, WeightEntry, ConditionEntry
 
+
 class MealItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = MealItem
-        fields = ["id","meal_type","name","grams","kcal","carb","protein","fat","sugar","sodium","created_at"]
+        fields = [
+            "id",
+            "meal_type",
+            "name",
+            "grams",
+            "kcal",
+            "carb",
+            "protein",
+            "fat",
+            "sugar",
+            "sodium",
+            "created_at",
+        ]
+
 
 class ExerciseItemSerializer(serializers.ModelSerializer):
     class Meta:
         model = ExerciseItem
-        fields = ["id","name","minutes","burned_kcal","created_at"]
+        fields = ["id", "name", "minutes", "burned_kcal", "created_at"]
+
 
 class WeightEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = WeightEntry
         fields = ["weight_kg"]
 
+
 class ConditionEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = ConditionEntry
-        fields = ["emoji","note"]
+        fields = ["emoji", "note"]
+
 
 class DaySummarySerializer(serializers.ModelSerializer):
     has_meal = serializers.SerializerMethodField()
@@ -31,10 +48,21 @@ class DaySummarySerializer(serializers.ModelSerializer):
         model = DayRecord
         fields = [
             "date",
-            "has_meal","has_exercise","has_weight",
-            "condition_emoji","supplement_taken",
-            "total_kcal","total_carb","total_protein","total_fat","total_sugar","total_sodium",
-            "warning_flags"
+            "has_meal",
+            "has_exercise",
+            "has_weight",
+            "condition_emoji",
+            "breakfast",
+            "lunch",
+            "dinner",
+            "nutrition",
+            "total_kcal",
+            "total_carb",
+            "total_protein",
+            "total_fat",
+            "total_sugar",
+            "total_sodium",
+            "warning_flags",
         ]
 
     def get_has_meal(self, obj):
@@ -55,6 +83,7 @@ class DaySummarySerializer(serializers.ModelSerializer):
             flags.append("HIGH_SODIUM")
         return flags
 
+
 class DayDetailSerializer(serializers.ModelSerializer):
     meals = MealItemSerializer(many=True, read_only=True)
     exercises = ExerciseItemSerializer(many=True, read_only=True)
@@ -65,7 +94,19 @@ class DayDetailSerializer(serializers.ModelSerializer):
         model = DayRecord
         fields = [
             "date",
-            "total_kcal","total_carb","total_protein","total_fat","total_sugar","total_sodium",
-            "condition_emoji","supplement_taken",
-            "meals","exercises","weight","condition",
+            "total_kcal",
+            "total_carb",
+            "total_protein",
+            "total_fat",
+            "total_sugar",
+            "total_sodium",
+            "condition_emoji",
+            "breakfast",
+            "lunch",
+            "dinner",
+            "nutrition",
+            "meals",
+            "exercises",
+            "weight",
+            "condition",
         ]
