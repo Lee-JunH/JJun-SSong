@@ -2,50 +2,85 @@
   <div class="layout">
     <header class="header">
       <nav class="nav">
-        <!-- 로고 (기존 코드 유지) -->
-        <div class="brand" role="button" tabindex="0" @click="$router.push('/')">
-          <img class="brand-logo" :src="logoUrl" alt="헬린더 로고" />
-        </div>
+        <div class="nav-inner">
+          <div class="brand" role="button" tabindex="0" @click="$router.push('/')">
+            <img class="brand-logo" :src="logoUrl" alt="헬린더 로고" />
+          </div>
 
-        <!-- 중앙 정렬된 메뉴 링크들 -->
-        <div class="links" aria-label="메인 메뉴">
-          <RouterLink to="/" class="nav-link" exact-active-class="is-active">홈</RouterLink>
-          <RouterLink to="/features" class="nav-link" active-class="is-active">기능소개</RouterLink>
-          <RouterLink to="/start" class="nav-link" active-class="is-active">시작하기</RouterLink>
-          <RouterLink to="/my" class="nav-link" active-class="is-active">마이헬린더</RouterLink>
-        </div>
+          <div class="links" aria-label="메인 메뉴">
+            <RouterLink to="/" class="nav-link" exact-active-class="is-active">홈</RouterLink>
+            <RouterLink to="/features" class="nav-link" exact-active-class="is-active">기능소개</RouterLink>
+            <RouterLink v-if="!auth.me" to="/start" class="nav-link" exact-active-class="is-active">시작하기</RouterLink>
+            <RouterLink to="/my" class="nav-link" exact-active-class="is-active">마이헬린더</RouterLink>
+          </div>
 
-        <!-- 우측 인증 버튼 -->
-        <div class="auth">
-          <template v-if="auth.me">
-            <span class="me">{{ auth.me.email }}</span>
-            <button class="btn logout-btn" @click="onLogout">로그아웃</button>
-          </template>
-          <template v-else>
-            <RouterLink to="/login" class="auth-link">로그인</RouterLink>
-            <RouterLink to="/signup" class="btn signup-btn">회원가입</RouterLink>
-          </template>
+          <div class="auth">
+            <template v-if="auth.me">
+              <span class="me">{{ auth.me.email }}</span>
+              <button class="btn logout-btn" type="button" @click="openLogoutModal">로그아웃</button>
+
+            </template>
+            <template v-else>
+              <RouterLink to="/login" class="auth-link">로그인</RouterLink>
+              <RouterLink to="/signup" class="btn signup-btn">회원가입</RouterLink>
+            </template>
+          </div>
         </div>
       </nav>
     </header>
+
 
     <main class="main">
       <RouterView />
     </main>
 
     <footer class="footer">
-      © Healendar
+      © 헬린더
     </footer>
   </div>
+
+  <ConfirmModal
+    :open="showLogoutModal"
+    title=""                              
+    message="로그아웃 하시겠습니까?"
+    confirm-text="네"
+    cancel-text="아니요"
+    @confirm="confirmLogout"
+    @cancel="closeLogoutModal"
+  />
+
 </template>
 
 <script setup>
+import { ref } from "vue"
 import { useAuthStore } from "@/stores/auth"
+import { useRouter } from "vue-router"
 import logoUrl from "@/assets/logo.png"
+import ConfirmModal from "@/components/ConfirmModal.vue"
 
 const auth = useAuthStore()
-const onLogout = () => auth.logout()
+const router = useRouter()
+
+const showLogoutModal = ref(false)
+
+function openLogoutModal() {
+  showLogoutModal.value = true
+}
+
+function closeLogoutModal() {
+  showLogoutModal.value = false
+}
+
+async function confirmLogout() {
+  try {
+    await auth.logout()
+  } finally {
+    showLogoutModal.value = false
+    router.replace("/")
+  }
+}
 </script>
+
 
 <style scoped>
 /* --- 레이아웃 설정 --- */
@@ -71,15 +106,22 @@ const onLogout = () => auth.logout()
 
 .nav {
   height: 100%;
-  max-width: 1200px;
+  width: 100%;              /* ✅ header 폭을 그대로 사용 */
+  padding: 0;               /* ✅ 바깥은 full-bleed */
+}
+
+.nav-inner {
+  height: 100%;
+  max-width: 1200px;        /* ✅ 내용만 1200 제한 */
   margin: 0 auto;
   padding: 0 24px;
-  
+
   display: flex;
   align-items: center;
-  justify-content: space-between; /* 양 끝 정렬 */
-  position: relative; /* 자식 요소(links)의 absolute 기준점 */
+  justify-content: space-between;
+  position: relative;       /* links absolute 기준점 */
 }
+
 
 /* 로고 영역 */
 .brand {

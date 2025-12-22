@@ -2,12 +2,6 @@
   <div class="panel">
     <div class="head">
       <div class="h-title">{{ date }}</div>
-      <div class="toggles">
-        <label class="toggle">
-          <input type="checkbox" :checked="detail?.supplement_taken" @change="onSupp($event)" />
-          영양제
-        </label>
-      </div>
     </div>
 
     <div v-if="loading" class="box">불러오는 중...</div>
@@ -54,15 +48,15 @@
             <option value="dinner">저녁</option>
           </select>
           <input v-model="foodName" placeholder="음식명" class="grow" />
-          <input v-model.number="grams" type="number" step="1" placeholder="g" class="small" />
+          <input v-model.number="grams" type="number" step="1" placeholder="그램수(g)" class="small" />
         </div>
         
         <!-- 변경: 영양성분 입력을 위한 그리드 레이아웃 적용 -->
         <div class="nutrition-row">
-          <input v-model.number="kcal" type="number" step="1" placeholder="kcal" />
-          <input v-model.number="carb" type="number" step="0.1" placeholder="탄(g)" />
-          <input v-model.number="protein" type="number" step="0.1" placeholder="단(g)" />
-          <input v-model.number="fat" type="number" step="0.1" placeholder="지(g)" />
+          <input v-model.number="kcal" type="number" step="1" placeholder="칼로리(kcal)" />
+          <input v-model.number="carb" type="number" step="0.1" placeholder="탄수화물(g)" />
+          <input v-model.number="protein" type="number" step="0.1" placeholder="단백질(g)" />
+          <input v-model.number="fat" type="number" step="0.1" placeholder="지방(g)" />
           <button class="btn" @click="addMeal">추가</button>
         </div>
 

@@ -25,10 +25,10 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  display: block;          /* ✅ flex 제거 */
+  place-items: initial;    /* ✅ 제거 */
 }
 
 h1 {
@@ -47,9 +47,7 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
-button:hover {
-  border-color: #646cff;
-}
+
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -59,11 +57,13 @@ button:focus-visible {
   padding: 2em;
 }
 
+
 #app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  width: 100%;
+  max-width: none;         /* ✅ max-width 제거 */
+  margin: 0;               /* ✅ 가운데 정렬 제거 */
+  padding: 0;              /* ✅ 안쪽 여백 제거 */
+  text-align: left;        /* ✅ 기본 left */
 }
 
 @media (prefers-color-scheme: light) {
@@ -83,7 +83,7 @@ button:focus-visible {
 @font-face {
   font-family: "AritaDotumKR";
   src: url("./assets/fonts/AritaDotumKR-Medium.ttf") format("truetype");
-  font-weight: 500; /* Medium */
+  font-weight: 500;
   font-style: normal;
   font-display: swap;
 }
@@ -92,7 +92,31 @@ button:focus-visible {
 @font-face {
   font-family: "AritaDotumKR";
   src: url("@/assets/fonts/AritaDotumKR-Bold.ttf") format("truetype");
-  font-weight: 800; /* 또는 700 */
+  font-weight: 800;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AritaDotumKR";
+  src: url("@/assets/fonts/AritaDotumKR-Light.ttf") format("truetype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AritaDotumKR";
+  src: url("@/assets/fonts/AritaDotumKR-SemiBold.ttf") format("truetype");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "AritaDotumKR";
+  src: url("@/assets/fonts/AritaDotumKR-Thin.ttf") format("truetype");
+  font-weight: 100;
   font-style: normal;
   font-display: swap;
 }
