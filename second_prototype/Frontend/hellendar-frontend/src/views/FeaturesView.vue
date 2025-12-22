@@ -1,4 +1,3 @@
-<!-- src/views/FeaturesView.vue -->
 <template>
   <section class="features">
     <!-- Hero -->
@@ -14,6 +13,7 @@
         :key="f.key"
         class="feature"
         :class="{ reverse: idx % 2 === 1 }"
+        :ref="(el) => (featureRefs[idx] = el)"
       >
         <div class="media">
           <div class="media-inner">
@@ -42,6 +42,8 @@
 </template>
 
 <script setup>
+import { onMounted, ref } from "vue"
+
 /**
  * 이미지 파일명은 프로젝트에 맞게 수정하세요.
  * 예) /src/assets/features/calendar.png 등
@@ -49,6 +51,34 @@
 import calendarImg from "@/assets/features_calendar.png"
 import foodImg from "@/assets/features_food.png"
 import insightImg from "@/assets/features_insight.png"
+
+/* --- Intersection Observer 설정 --- */
+const featureRefs = ref([])
+
+onMounted(() => {
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry, index) => {
+        if (entry.isIntersecting) {
+          // 화면에 동시에 나타나는 요소들에게 순차적인 딜레이 적용
+          // (스크롤하여 하나씩 만날 때는 index가 0이므로 즉시 실행됨)
+          entry.target.style.animationDelay = `${index * 0.2}s`
+          entry.target.classList.add("is-visible")
+          
+          // 한 번 애니메이션 실행 후 관찰 중지
+          observer.unobserve(entry.target)
+        }
+      })
+    },
+    {
+      threshold: 0.40,
+    }
+  )
+
+  featureRefs.value.forEach((el) => {
+    if (el) observer.observe(el)
+  })
+})
 
 /* --- 아이콘 컴포넌트(외부 라이브러리 없이 inline) --- */
 const IconCalendar = {
@@ -166,6 +196,16 @@ const featureSections = [
   grid-template-columns: 1.15fr 0.85fr; /* 이미지가 조금 더 크게 */
   align-items: center;
   gap: 46px;
+
+  /* 초기 상태: 투명하고 약간 아래에 위치 */
+  opacity: 0;
+  transform: translate3d(0, 40px, 0);
+  /* transition을 사용하지 않고 animation 클래스로 제어합니다 */
+}
+
+/* Intersection Observer에 의해 추가되는 클래스 */
+.feature.is-visible {
+  animation: fadeInDown 1s ease-out forwards;
 }
 
 .feature.reverse {
@@ -237,6 +277,19 @@ const featureSections = [
 }
 .bullets li {
   margin: 6px 0;
+}
+
+/* fadeInDown 애니메이션 정의 */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 40px, 0); /* 아래에서 위로 올라오는 느낌으로 변경 (fadeInUp) */
+    /* 만약 위에서 아래로 떨어지는 느낌을 원하시면 40px 대신 -40px로 설정하세요 */
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
 }
 
 /* Responsive */

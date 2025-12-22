@@ -21,12 +21,14 @@
 
             <template v-else-if="auth.me">
               <span class="me">{{ auth.me.email }}</span>
-              <button class="btn" @click="onLogout">로그아웃</button>
+              <!-- 클래스 추가 및 클릭 핸들러 수정 -->
+              <button class="btn logout-btn" @click="openLogoutModal">로그아웃</button>
             </template>
 
             <template v-else>
-              <RouterLink to="/login">로그인</RouterLink>
-              <RouterLink to="/signup">회원가입</RouterLink>
+              <!-- 클래스 추가: 스타일 적용을 위해 auth-link, signup-btn 추가 -->
+              <RouterLink to="/login" class="auth-link">로그인</RouterLink>
+              <RouterLink to="/signup" class="btn signup-btn">회원가입</RouterLink>
             </template>
           </div>
         </div>
@@ -56,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref } from "vue"
+import { ref, onMounted } from "vue"
 import { useAuthStore } from "@/stores/auth"
 import { useRouter } from "vue-router"
 import logoUrl from "@/assets/logo.png"
@@ -67,7 +69,6 @@ const router = useRouter()
 
 const showLogoutModal = ref(false)
 
-import { onMounted } from "vue"
 onMounted(async () => {
   // 새로고침 시 localStorage에서 토큰을 복구해두었으므로
   // accessToken이 있으면 사용자 정보를 가져와 `auth.me`를 채웁니다.
@@ -214,6 +215,7 @@ async function confirmLogout() {
   color: #495057;
   font-size: 0.9rem;
   font-weight: 500;
+  padding: 8px 12px; /* 패딩 추가 */
 }
 .auth-link:hover { color: #212529; }
 
@@ -225,6 +227,10 @@ async function confirmLogout() {
   cursor: pointer;
   transition: all 0.2s;
   border: 1px solid transparent;
+  display: inline-flex; /* 버튼 내용 정렬 */
+  align-items: center;
+  justify-content: center;
+  text-decoration: none; /* a태그 밑줄 제거 */
 }
 
 .logout-btn {
