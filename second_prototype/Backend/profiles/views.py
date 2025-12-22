@@ -11,9 +11,7 @@ class MyProfileView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        profile = Profile.objects.filter(user=request.user).first()
-        if not profile:
-            return Response({"detail": "PROFILE_NOT_FOUND"}, status=404)
+        profile, _ = Profile.objects.get_or_create(user=request.user)
         return Response(ProfileSerializer(profile).data)
 
     def patch(self, request):
