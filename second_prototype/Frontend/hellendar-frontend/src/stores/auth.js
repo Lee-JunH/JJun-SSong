@@ -6,8 +6,18 @@ export const useAuthStore = defineStore("auth", {
     accessToken: localStorage.getItem("access") || "",
     refreshToken: localStorage.getItem("refresh") || "",
     me: null,
+    isBootstrapped: false,   // ✅ 추가
   }),
   actions: {
+    async bootstrap() {
+      try {
+        if (this.accessToken) {
+          await this.fetchMe()
+        }
+      } finally {
+        this.isBootstrapped = true
+      }
+    },
     async register(payload) {
       await http.post("/auth/register/", payload)
     },

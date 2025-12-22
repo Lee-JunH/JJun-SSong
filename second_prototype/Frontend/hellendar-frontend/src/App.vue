@@ -15,14 +15,18 @@
           </div>
 
           <div class="auth">
-            <template v-if="auth.me">
-              <span class="me">{{ auth.me.email }}</span>
-              <button class="btn logout-btn" type="button" @click="openLogoutModal">로그아웃</button>
-
+            <template v-if="!auth.isBootstrapped">
+              <span style="font-size:12px;color:#999;">확인 중...</span>
             </template>
+
+            <template v-else-if="auth.me">
+              <span class="me">{{ auth.me.email }}</span>
+              <button class="btn" @click="onLogout">로그아웃</button>
+            </template>
+
             <template v-else>
-              <RouterLink to="/login" class="auth-link">로그인</RouterLink>
-              <RouterLink to="/signup" class="btn signup-btn">회원가입</RouterLink>
+              <RouterLink to="/login">로그인</RouterLink>
+              <RouterLink to="/signup">회원가입</RouterLink>
             </template>
           </div>
         </div>
@@ -62,6 +66,22 @@ const auth = useAuthStore()
 const router = useRouter()
 
 const showLogoutModal = ref(false)
+
+import { onMounted } from "vue"
+onMounted(async () => {
+  // 새로고침 시 localStorage에서 토큰을 복구해두었으므로
+  // accessToken이 있으면 사용자 정보를 가져와 `auth.me`를 채웁니다.
+  if (auth.accessToken && !auth.me) {
+    try {
+      await auth.fetchMe()
+    } catch (e) {
+      // 토큰 만료/오류 시 안전하게 로그아웃 처리
+      auth.logout()
+      // 선택: 홈으로 리다이렉트(현재는 강제 이동하지 않음)
+      router.replace("/")
+    }
+  }
+})
 
 function openLogoutModal() {
   showLogoutModal.value = true
