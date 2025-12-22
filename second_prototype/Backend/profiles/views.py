@@ -1,14 +1,24 @@
 from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
-from .models import UserProfile
-from .serializers import UserProfileSerializer
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import Profile
+from .serializers import ProfileSerializer
 
 
-class MyProfileView(generics.RetrieveUpdateAPIView):
+class MyProfileView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = UserProfileSerializer
 
-    def get_object(self):
-        # 프로필이 없으면 자동 생성 → 프론트가 404 처리할 필요 없음
-        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
-        return profile
+    def get(self, request):
+        profile = Profile.objects.filter(user=request.user).first()
+        if not profile:
+            return Response({"detail": "PROFILE_NOT_FOUND"}, status=404)
+        return Response(ProfileSerializer(profile).data)
+
+    def patch(self, request):
+        profile, _ = Profile.objects.get_or_create(user=request.user)
+        serializer = ProfileSerializer(profile, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
