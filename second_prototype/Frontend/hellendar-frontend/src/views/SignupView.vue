@@ -1,4 +1,3 @@
-<!-- SignupView.vue -->
 <template>
   <section class="signup-page">
     <div class="panel" role="region" aria-label="회원가입">
@@ -18,6 +17,7 @@
       </div>
 
       <form @submit.prevent="onSubmit" class="form">
+        <!-- Nickname Input (formerly Name) -->
         <div class="field">
           <span class="icon" aria-hidden="true">
             <!-- user icon -->
@@ -31,8 +31,9 @@
           <input
             v-model="name"
             type="text"
-            placeholder="Name (optional)"
-            autocomplete="name"
+            placeholder="닉네임"
+            autocomplete="username"
+            required
           />
         </div>
 
@@ -100,7 +101,7 @@ import { useRouter } from "vue-router"
 const router = useRouter()
 const auth = useAuthStore()
 
-const name = ref("")
+const name = ref("") // 닉네임
 const email = ref("")
 const password = ref("")
 
@@ -114,16 +115,27 @@ async function onSubmit() {
   loading.value = true
 
   try {
+    // 1) 회원가입
     await auth.register({
       name: name.value,
       email: email.value,
       password: password.value,
     })
 
-    msg.value = "가입 완료. 로그인 해주세요."
-    router.push("/login")
+    // 2) ✅ 바로 로그인 (토큰 저장 + me fetch)
+    await auth.login({ email: email.value, password: password.value })
+
+    // 3) ✅ 프로필 페이지로 이동 (ProfileView에서 프로필 없으면 모달 자동 오픈)
+    msg.value = "가입 완료! 프로필 설정으로 이동합니다."
+    router.replace("/profile") // TODO: 실제 ProfileView 경로로 변경
+
   } catch (e) {
-    error.value = e?.response?.data?.detail || "회원가입 실패"
+    // 백엔드 에러 포맷에 따라 메시지 다르게 표시
+    const data = e?.response?.data
+    if (data?.email?.[0]) error.value = data.email[0]
+    else if (data?.password?.[0]) error.value = data.password[0]
+    else if (data?.name?.[0]) error.value = data.name[0]
+    else error.value = data?.detail || "회원가입 실패"
   } finally {
     loading.value = false
   }
@@ -133,6 +145,7 @@ function goLogin() {
   router.push("/login")
 }
 </script>
+
 
 <style scoped>
 /* LoginView와 동일한 full-bleed 처리 */

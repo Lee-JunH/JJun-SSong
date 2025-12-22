@@ -2,7 +2,6 @@
   <div class="profile-page">
     <!-- 1. 프로필 정보가 있을 때: 웹사이트 대시보드 뷰 -->
     <div v-if="profileData" class="dashboard-container fade-in">
-      
       <!-- 상단 헤더: 프로필 요약 -->
       <header class="dash-header">
         <div class="user-intro">
@@ -10,9 +9,9 @@
             {{ profileData.gender === 'male' ? '👦' : '👧' }}
           </div>
           <div class="user-text">
-            <h1 class="greeting">안녕하세요, 헬린이님! 👋</h1>
+            <h1 class="greeting">안녕하세요, {{ displayName }}님! 👋</h1>
             <p class="summary">
-              현재 <span class="highlight">{{ bmiStatus }}</span> 상태이며, 
+              현재 <span class="highlight">{{ bmiStatus }}</span> 상태이며,
               목표까지 <span class="highlight">{{ weightDiff }}kg</span> 남았어요.
             </p>
           </div>
@@ -46,7 +45,7 @@
           <h3 class="card-title">현재 체중</h3>
           <p class="card-value">{{ profileData.weight }} <span class="unit">kg</span></p>
           <p class="card-desc">
-            시작보다 {{ (profileData.weight - profileData.startWeight).toFixed(1) }}kg 변화
+            시작보다 {{ (profileData.weight - (profileData.start_weight ?? profileData.weight)).toFixed(1) }}kg 변화
           </p>
         </article>
       </section>
@@ -65,19 +64,19 @@
           </div>
           <div class="info-item">
             <span class="label">시작 체중</span>
-            <span class="value">{{ profileData.startWeight }} kg</span>
+            <span class="value">{{ profileData.start_weight }} kg</span>
           </div>
           <div class="info-item">
             <span class="label">목표 체중</span>
-            <span class="value">{{ profileData.goalWeight }} kg</span>
+            <span class="value">{{ profileData.goal_weight }} kg</span>
           </div>
         </div>
-        
+
         <!-- 체중 진행 바 -->
         <div class="progress-box">
           <div class="progress-labels">
-            <span>시작 {{ profileData.startWeight }}kg</span>
-            <span>목표 {{ profileData.goalWeight }}kg</span>
+            <span>시작 {{ profileData.start_weight }}kg</span>
+            <span>목표 {{ profileData.goal_weight }}kg</span>
           </div>
           <div class="progress-track">
             <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
@@ -88,18 +87,18 @@
           </div>
         </div>
       </section>
-
     </div>
 
-    <!-- 2. 프로필 정보가 없을 때 (로딩 중이거나 최초 진입) -->
+    <!-- 2. 프로필 정보가 없을 때 -->
     <div v-else class="empty-state">
-      <p>프로필 정보를 불러오는 중입니다...</p>
+      <p v-if="loading">프로필 정보를 불러오는 중입니다...</p>
+      <p v-else>프로필 정보가 없습니다. 설정을 진행해주세요.</p>
     </div>
 
-    <!-- 3. 프로필 설정 모달 (MyProfile 컴포넌트 재사용) -->
+    <!-- 3. 프로필 설정 모달 -->
     <Transition name="modal">
-      <MyProfile 
-        v-if="isModalOpen" 
+      <MyProfile
+        v-if="isModalOpen"
         :initial-data="profileData"
         @save="handleSave"
         @close="handleClose"
@@ -109,45 +108,76 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import MyProfile from '@/components/MyProfile.vue'
+import { ref, computed, onMounted } from "vue"
+import { useRouter } from "vue-router"
+import http from "@/api/http"
+import MyProfile from "@/components/MyProfile.vue"
+import { useAuthStore } from "@/stores/auth"  
 
-// --- State ---
+const router = useRouter()
+const auth = useAuthStore() 
+
 const profileData = ref(null)
 const isModalOpen = ref(false)
-
-// --- Lifecycle ---
-onMounted(() => {
-  // 1. 로컬 스토리지에서 데이터 확인
-  const savedProfile = localStorage.getItem('hellendar_profile')
-  
-  if (savedProfile) {
-    // 데이터가 있으면 파싱해서 보여줌
-    profileData.value = JSON.parse(savedProfile)
-  } else {
-    // 데이터가 없으면 모달 즉시 실행
-    isModalOpen.value = true
-  }
+const loading = ref(false)
+const displayName = computed(() => {
+  // 백엔드에 따라 username / name / nickname 중 하나일 수 있으니 안전하게
+  return auth.me?.username || auth.me?.name || auth.me?.nickname || "헬린이"
 })
 
-// --- Logic ---
-function handleSave(newData) {
-  // 데이터 저장 (실제 앱에선 API 호출)
-  profileData.value = newData
-  localStorage.setItem('hellendar_profile', JSON.stringify(newData))
-  
+async function fetchProfile() {
+  loading.value = true
+  try {
+    const res = await http.get("/profile/me/")
+    profileData.value = res.data
+
+    // ✅ “최초 1회 자동 오픈” 판단 로직 (백엔드 flag 없어도 동작)
+    const p = profileData.value
+    const isComplete =
+      !!p?.height &&
+      !!p?.weight &&
+      !!p?.gender &&
+      (p?.activity_level !== null && p?.activity_level !== undefined)
+
+    // 완성돼 있으면 자동 오픈 X
+    isModalOpen.value = !isComplete
+  } catch (e) {
+    const status = e?.response?.status
+
+    if (status === 401) {
+      router.push("/login")
+    } else {
+      console.error(e)
+      alert("프로필 정보를 불러오는 중 오류가 발생했습니다.")
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+
+
+onMounted(async () => {
+  // ✅ me가 없으면 먼저 가져오기
+  if (!auth.me) {
+    try { await auth.fetchMe() } catch {}
+  }
+  fetchProfile()
+})
+
+function handleSave(saved) {
+  // MyProfile에서 PATCH 성공 후 전달된 최신 데이터
+  profileData.value = saved
   isModalOpen.value = false
-  // 알림 등 추가 가능
 }
 
 function handleClose() {
-  // 만약 프로필이 아예 없는 상태에서 닫기를 누르면?
-  // -> 강제로 다시 열거나, 빈 화면을 보여줄 수 있음. 
-  // 여기서는 데이터가 있으면 닫고, 없으면 경고 후 유지.
+  // 프로필이 없는 상태면 닫기 막기(원하면 정책 변경 가능)
   if (profileData.value) {
     isModalOpen.value = false
   } else {
-    alert("서비스 이용을 위해 프로필 설정이 필요해요! 😅")
+    alert("서비스 이용을 위해 프로필 설정이 필요해요!")
+    isModalOpen.value = true
   }
 }
 
@@ -155,10 +185,9 @@ function openModal() {
   isModalOpen.value = true
 }
 
-// --- Computed Stats ---
-// 1. BMI 계산: 몸무게(kg) / (키(m) * 키(m))
+/* ---------- Computed Stats ---------- */
 const bmiValue = computed(() => {
-  if (!profileData.value) return 0
+  if (!profileData.value?.height || !profileData.value?.weight) return 0
   const h = profileData.value.height / 100
   const w = profileData.value.weight
   return (w / (h * h)).toFixed(1)
@@ -166,61 +195,57 @@ const bmiValue = computed(() => {
 
 const bmiStatus = computed(() => {
   const bmi = parseFloat(bmiValue.value)
-  if (bmi < 18.5) return '저체중'
-  if (bmi < 23) return '정상'
-  if (bmi < 25) return '과체중'
-  return '비만'
+  if (!bmi) return "-"
+  if (bmi < 18.5) return "저체중"
+  if (bmi < 23) return "정상"
+  if (bmi < 25) return "과체중"
+  return "비만"
 })
 
 const bmiClass = computed(() => {
   const status = bmiStatus.value
-  if (status === '정상') return 'good'
-  if (status === '저체중') return 'warn'
-  return 'danger'
+  if (status === "정상") return "good"
+  if (status === "저체중") return "warn"
+  if (status === "-") return "warn"
+  return "danger"
 })
 
-// 2. BMR (기초대사량) - 해리스-베네딕트 공식 약식
 const bmrValue = computed(() => {
   if (!profileData.value) return 0
-  const { gender, weight, height, age } = profileData.value
-  // 남성: 66.47 + (13.75 × 체중) + (5 × 키) - (6.76 × 나이)
-  // 여성: 655.1 + (9.56 × 체중) + (1.85 × 키) - (4.68 × 나이)
+  const { gender, weight, height, age, activity_level } = profileData.value
+  if (!weight || !height || !age) return 0
+
   let base = 0
-  if (gender === 'male') {
-    base = 66.47 + (13.75 * weight) + (5 * height) - (6.76 * age)
-  } else {
-    base = 655.1 + (9.56 * weight) + (1.85 * height) - (4.68 * age)
-  }
-  
-  // 활동량 계수 (단순화)
-  // 1->1.2, 2->1.375, 3->1.55, 4->1.725, 5->1.9
+  if (gender === "male") base = 66.47 + (13.75 * weight) + (5 * height) - (6.76 * age)
+  else base = 655.1 + (9.56 * weight) + (1.85 * height) - (4.68 * age)
+
   const activityMap = { 1: 1.2, 2: 1.375, 3: 1.55, 4: 1.725, 5: 1.9 }
-  const multiplier = activityMap[profileData.value.activityLevel] || 1.2
-  
+  const multiplier = activityMap[activity_level] || 1.2
+
   return Math.round(base * multiplier)
 })
 
-// 3. 목표까지 남은 체중 & 진행률
 const weightDiff = computed(() => {
-  if (!profileData.value) return 0
-  return Math.abs(profileData.value.weight - profileData.value.goalWeight).toFixed(1)
+  if (!profileData.value?.weight || !profileData.value?.goal_weight) return 0
+  return Math.abs(profileData.value.weight - profileData.value.goal_weight).toFixed(1)
 })
 
 const progressPercent = computed(() => {
   if (!profileData.value) return 0
-  const { startWeight, goalWeight, weight } = profileData.value
-  const totalDiff = Math.abs(startWeight - goalWeight)
-  const currentDiff = Math.abs(startWeight - weight)
-  
-  if (totalDiff === 0) return 100
-  let pct = (currentDiff / totalDiff) * 100
-  return Math.min(Math.max(pct, 0), 100) // 0~100 사이
-})
+  const { start_weight, goal_weight, weight } = profileData.value
+  if (start_weight == null || goal_weight == null || weight == null) return 0
 
+  const totalDiff = Math.abs(start_weight - goal_weight)
+  const currentDiff = Math.abs(start_weight - weight)
+
+  if (totalDiff === 0) return 100
+  const pct = (currentDiff / totalDiff) * 100
+  return Math.min(Math.max(pct, 0), 100)
+})
 </script>
 
 <style scoped>
-/* 페이지 전체 컨테이너 */
+/* ===== 기존 디자인 그대로 ===== */
 .profile-page {
   min-height: 100vh;
   background-color: #f9fafb;
@@ -229,7 +254,6 @@ const progressPercent = computed(() => {
   margin: 0 auto;
 }
 
-/* 대시보드 페이드인 */
 .fade-in {
   animation: fadeIn 0.8s ease forwards;
 }
@@ -238,7 +262,6 @@ const progressPercent = computed(() => {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- 상단 헤더 --- */
 .dash-header {
   display: flex;
   justify-content: space-between;
@@ -295,7 +318,6 @@ const progressPercent = computed(() => {
   border-color: #d1d5db;
 }
 
-/* --- 스탯 그리드 --- */
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -313,9 +335,8 @@ const progressPercent = computed(() => {
   align-items: flex-start;
   transition: transform 0.2s;
 }
-.stat-card:hover {
-  transform: translateY(-4px);
-}
+.stat-card:hover { transform: translateY(-4px); }
+
 .stat-card.highlight {
   background: linear-gradient(135deg, #db1f4b 0%, #ff5e83 100%);
   color: white;
@@ -326,9 +347,7 @@ const progressPercent = computed(() => {
 .stat-card.highlight .unit {
   color: white;
 }
-.stat-card.highlight .card-icon {
-  background: rgba(255,255,255,0.2);
-}
+.stat-card.highlight .card-icon { background: rgba(255,255,255,0.2); }
 
 .card-icon {
   width: 40px; height: 40px;
@@ -341,12 +360,8 @@ const progressPercent = computed(() => {
 .card-icon.yellow { background: #fffbeb; }
 .card-icon.pink { background: #ffeef2; }
 
-.card-title {
-  font-size: 14px; color: #6b7280; margin: 0 0 8px; font-weight: 600;
-}
-.card-value {
-  font-size: 28px; font-weight: 800; color: #111827; margin: 0 0 4px;
-}
+.card-title { font-size: 14px; color: #6b7280; margin: 0 0 8px; font-weight: 600; }
+.card-value { font-size: 28px; font-weight: 800; color: #111827; margin: 0 0 4px; }
 .unit { font-size: 16px; font-weight: 600; color: #9ca3af; }
 .card-desc { font-size: 13px; color: #9ca3af; margin: 0; }
 
@@ -361,16 +376,13 @@ const progressPercent = computed(() => {
 .bmi-badge.warn { background: #fef9c3; color: #854d0e; }
 .bmi-badge.danger { background: #fee2e2; color: #991b1b; }
 
-/* --- 상세 패널 --- */
 .detail-panel {
   background: white;
   padding: 30px;
   border-radius: 24px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.03);
 }
-.panel-title {
-  font-size: 18px; font-weight: 800; margin: 0 0 24px; color: #111827;
-}
+.panel-title { font-size: 18px; font-weight: 800; margin: 0 0 24px; color: #111827; }
 
 .info-row {
   display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 40px;
@@ -379,17 +391,12 @@ const progressPercent = computed(() => {
 .info-item .label { font-size: 13px; color: #6b7280; font-weight: 600; }
 .info-item .value { font-size: 18px; color: #1f2937; font-weight: 700; }
 
-/* 프로그래스 바 */
 .progress-box { position: relative; padding-top: 10px; }
 .progress-labels {
   display: flex; justify-content: space-between; font-size: 12px; color: #9ca3af; margin-bottom: 8px;
 }
-.progress-track {
-  height: 12px; background: #f3f4f6; border-radius: 99px; position: relative;
-}
-.progress-bar {
-  height: 100%; background: #db1f4b; border-radius: 99px; transition: width 1s ease;
-}
+.progress-track { height: 12px; background: #f3f4f6; border-radius: 99px; position: relative; }
+.progress-bar { height: 100%; background: #db1f4b; border-radius: 99px; transition: width 1s ease; }
 .current-marker {
   position: absolute; top: 50%; transform: translate(-50%, -50%);
   display: flex; flex-direction: column; align-items: center;
@@ -402,20 +409,14 @@ const progressPercent = computed(() => {
   position: absolute; top: 24px; font-size: 12px; font-weight: 700; color: #db1f4b; white-space: nowrap;
 }
 
-/* 빈 상태 */
 .empty-state {
   height: 80vh; display: flex; align-items: center; justify-content: center; color: #9ca3af;
 }
 
-/* Modal Transition */
 .modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s ease;
-}
+.modal-leave-active { transition: opacity 0.3s ease; }
 .modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
+.modal-leave-to { opacity: 0; }
 
 @media (max-width: 768px) {
   .dash-header { flex-direction: column; align-items: flex-start; gap: 20px; }
