@@ -4,19 +4,17 @@
     <div class="calendar-header">
       <!-- 이전 달 (< 모양 아이콘) -->
       <button class="nav-btn" @click="moveMonth(-1)" aria-label="이전 달">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <img class="nav-icon" :src="chevronLeft" alt="" aria-hidden="true" />
       </button>
+
       
       <h2>{{ dayjs(month).format('YYYY년 M월') }}</h2>
       
       <!-- 다음 달 (> 모양 아이콘) -->
       <button class="nav-btn" @click="moveMonth(1)" aria-label="다음 달">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
+        <img class="nav-icon" :src="chevronRight" alt="" aria-hidden="true" />
       </button>
+
     </div>
 
     <div class="calendar-grid-container">
@@ -63,6 +61,9 @@
 <script setup>
 import { computed } from 'vue'
 import dayjs from 'dayjs'
+import chevronRight from "@/assets/icons/chevron_right.png"
+import chevronLeft from "@/assets/icons/chevron_left.png"
+
 
 const props = defineProps({
   month: String, 
@@ -118,20 +119,30 @@ function moveMonth(delta) {
 }
 
 /* 네비게이션 버튼 스타일 (원형 아이콘) */
+/* 네비게이션 버튼 스타일 (원형) */
 .nav-btn {
-  background: white;
-  border: 1px solid #e9ecef;
-  border-radius: 50%;
+
+  border-radius: 999px;
   width: 36px;
   height: 36px;
+
   display: flex;
   align-items: center;
   justify-content: center;
+
+  padding: 0;       /* ✅ 전역 button padding 무력화 */
+  line-height: 0;   /* ✅ 아이콘 수직 정렬 안정 */
   cursor: pointer;
-  color: #495057;
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+
 }
+
+.nav-icon {
+  width: 40px;
+
+  object-fit: contain;
+  display: block;
+}
+
 
 .nav-btn:hover {
   background: #f8f9fa;

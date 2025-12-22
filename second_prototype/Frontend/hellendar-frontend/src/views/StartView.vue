@@ -105,11 +105,19 @@ function goSignup() {
 
 <style scoped>
 .start {
-  padding: 80px 0 110px;
+  margin-top: 20px;
+  padding: 110px 0 120px;
 }
 
 .intro { text-align: center; }
-.title { margin: 0; font-size: 52px; letter-spacing: -0.05em; line-height: 1.15; }
+.title {   
+  margin: 0;
+  font-size: 48px;
+  letter-spacing: -0.05em;
+  line-height: 1.15;
+  color: #111827;
+  font-weight: 800;
+}
 .subtitle { margin: 18px 0 0; font-size: 16px; color: #6b7280; }
 
 .steps {
@@ -224,10 +232,10 @@ function goSignup() {
   cursor: pointer;
   padding: 18px 42px;
   border-radius: 999px;
-  background: #16a34a; /* 스샷의 초록 느낌 */
+  background: #c22446; /* 스샷의 초록 느낌 */
   color: #ffffff;
   font-size: 16px;
-  font-weight: 800;
+  font-weight: 500;
   transition: transform 0.2s ease, filter 0.2s ease;
 }
 
