@@ -27,13 +27,7 @@
               <h1 class="banner-title">{{ b.title }}</h1>
               <p class="banner-subtitle">{{ b.subtitle }}</p>
 
-              <!-- (선택) 배너 버튼이 필요하면 여기 사용 -->
-              <!--
-              <div class="banner-cta">
-                <RouterLink class="btn" to="/my">마이헬린더</RouterLink>
-                <RouterLink class="btn ghost" to="/features">기능소개</RouterLink>
-              </div>
-              -->
+
             </div>
           </div>
         </div>
@@ -103,9 +97,16 @@
         <div class="cta-box">
           <h2 class="cta-title">오늘부터 헬린더로 시작해볼까요?</h2>
           <p class="cta-sub">3단계로 간편하게 시작하고, 기록을 습관으로 만들어요.</p>
-          <div class="cta-actions">
+
+          <!-- ✅ 로그인 상태 -->
+          <div v-if="auth.me" class="cta-actions">
+            <RouterLink class="cta-btn" to="/my">마이캘린더 시작하기</RouterLink>
+          </div>
+
+          <!-- ✅ 비로그인 상태 -->
+          <div v-else class="cta-actions">
             <RouterLink class="cta-btn" to="/signup">회원가입하고 시작하기</RouterLink>
-            <RouterLink class="cta-btn ghost" to="/start">시작하기 보기</RouterLink>
+            <RouterLink class="cta-btn ghost" to="/start">시작하기</RouterLink>
           </div>
         </div>
       </section>
@@ -115,6 +116,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from "vue"
+import { useAuthStore } from "@/stores/auth"
+
+const auth = useAuthStore()
 
 /* =======================
    Banner 이미지 (본인 assets에 맞게 수정)
@@ -640,7 +644,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: #db1f4b;
   color: #fff;
-  font-weight: 800;
+  font-weight: 500;
   border: 1px solid transparent;
 }
 .cta-btn.ghost {

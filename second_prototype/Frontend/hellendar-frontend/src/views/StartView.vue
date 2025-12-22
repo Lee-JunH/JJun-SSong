@@ -14,7 +14,7 @@
         <div class="meta">
           <div class="step-no">STEP 1</div>
           <div class="step-title">회원가입</div>
-          <p class="step-desc">이메일과 비밀번호만으로 간편하게 가입하세요.</p>
+          <p class="step-desc">{{ "이메일과 비밀번호만으로\n간편하게 가입하세요." }}</p>
         </div>
       </article>
 
@@ -25,8 +25,8 @@
         <div class="meta">
           <div class="step-no">STEP 2</div>
           <div class="step-title">프로필 설정</div>
-          <p class="step-desc">기본 정보와 건강 목표를 입력하세요.
-            언제든 수정 가능합니다.
+          <p class="step-desc">
+            {{ "기본 정보와 건강 목표를 입력하세요.\n언제든 수정 가능합니다." }}
           </p>
         </div>
       </article>
@@ -38,8 +38,8 @@
         <div class="meta">
           <div class="step-no">STEP 3</div>
           <div class="step-title">첫 기록 시작</div>
-          <p class="step-desc">오늘의 식단과 운동을 기록하고
-            건강한 습관을 만들어가세요.
+          <p class="step-desc">
+            {{ "오늘의 식단과 운동을 기록하고\n건강한 습관을 만들어가세요." }}
           </p>
         </div>
       </article>
@@ -162,9 +162,8 @@ function goSignup() {
   font-size: 14px;
 
   /* 줄바꿈 방지 + 넘치면 ... */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-line;
+
 }
 
 /* ---- FAQ ---- */

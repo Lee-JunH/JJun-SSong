@@ -9,7 +9,7 @@ import LoginView from "@/views/LoginView.vue"
 import SignupView from "@/views/SignupView.vue"
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: "/", component: HomeView },
     { path: "/features", component: FeaturesView },
@@ -18,6 +18,16 @@ const router = createRouter({
     { path: "/signup", component: SignupView },
     { path: "/my", component: MyHealendarView, meta: { requiresAuth: true } },
   ],
+  scrollBehavior(to, from, savedPosition) {
+    // 뒤로가기/앞으로가기면 기존 위치 복원
+    if (savedPosition) return savedPosition
+
+    // 해시(#section) 이동이 있으면 해당 요소로
+    if (to.hash) return { el: to.hash, behavior: "smooth" }
+
+    // 기본: 항상 맨 위로
+    return { left: 0, top: 0 }
+  },
 })
 
 router.beforeEach(async (to) => {
