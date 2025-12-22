@@ -17,6 +17,7 @@ const router = createRouter({
     { path: "/login", component: LoginView },
     { path: "/signup", component: SignupView },
     { path: "/my", component: MyHealendarView, meta: { requiresAuth: true } },
+    { path: "/profile", name: "profile", component: () => import("@/views/ProfileView.vue"), meta: { requiresAuth: true } },
   ],
   scrollBehavior(to, from, savedPosition) {
     // 뒤로가기/앞으로가기면 기존 위치 복원

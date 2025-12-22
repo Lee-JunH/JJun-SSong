@@ -20,7 +20,11 @@
             </template>
 
             <template v-else-if="auth.me">
-              <span class="me">{{ auth.me.email }}</span>
+              <span class="user-profile">
+                <RouterLink v-if="auth.me" to="/profile" class="user-id">
+                  {{ auth.me.email }}
+                </RouterLink>
+              </span>
               <!-- 클래스 추가 및 클릭 핸들러 수정 -->
               <button class="btn logout-btn" @click="openLogoutModal">로그아웃</button>
             </template>
