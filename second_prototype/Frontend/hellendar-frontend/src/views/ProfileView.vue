@@ -79,7 +79,8 @@
             <span>목표 {{ profileData.goal_weight }}kg</span>
           </div>
           <div class="progress-track">
-            <div class="progress-bar" :style="{ width: progressPercent + '%' }"></div>
+            <div class="progress-bar" :style="progressBarStyle"></div>
+
             <div class="current-marker" :style="{ left: progressPercent + '%' }">
               <div class="marker-dot"></div>
               <span class="marker-label">현재 {{ profileData.weight }}</span>
@@ -242,6 +243,33 @@ const progressPercent = computed(() => {
   const pct = (currentDiff / totalDiff) * 100
   return Math.min(Math.max(pct, 0), 100)
 })
+
+const isGoalAchieved = computed(() => {
+  if (!profileData.value) return false
+  const { start_weight, goal_weight, weight } = profileData.value
+  if (start_weight == null || goal_weight == null || weight == null) return false
+
+  const start = Number(start_weight)
+  const goal = Number(goal_weight)
+  const current = Number(weight)
+
+  // 시작 < 목표 : 증량 목표 → current >= goal 이면 달성
+  if (start < goal) return current >= goal
+
+  // 시작 > 목표 : 감량 목표 → current <= goal 이면 달성
+  if (start > goal) return current <= goal
+
+  // 시작 == 목표 : 애매하지만, 현재가 목표와 같으면 달성으로 처리
+  return current === goal
+})
+
+const progressBarStyle = computed(() => {
+  return {
+    width: progressPercent.value + "%",
+    background: isGoalAchieved.value ? "#16a34a" : "#db1f4b", // 초록 / 기존 핑크
+  }
+})
+
 </script>
 
 <style scoped>

@@ -1,9 +1,7 @@
 <template>
   <!-- ✅ 부모 모달 내부에 들어갈 “내용”만 -->
   <div class="meal-content">
-    <!-- 헤더(부모 모달에 헤더가 이미 있으면 이 블록 삭제해도 됨) -->
-
-
+    
     <!-- 로딩/에러 -->
     <div v-if="loading" class="state-box loading">
       <span class="spinner"></span>
@@ -18,16 +16,23 @@
       <!-- 1) 영양 대시보드 -->
       <div class="dashboard-grid">
         <div class="nutri-card total-card">
-          <div class="card-label">총 섭취 칼로리</div>
+          <div class="card-label">
+            총 섭취 칼로리 
+            <span class="bmr-label">(일일 권장량 기준)</span>
+          </div>
+          
+          <!-- 칼로리 / TDEE 표시 영역 -->
           <div class="card-value main">
             {{ Number(detailSafe.total_kcal).toFixed(0) }}
+            <span class="bmr-text">/ {{ userTdeeText }}</span>
             <span class="unit">kcal</span>
           </div>
 
+          <!-- TDEE 기준 프로그래스 바 (그라데이션 적용) -->
           <div class="progress-bar-bg" aria-hidden="true">
             <div
               class="progress-bar-fill"
-              :style="{ width: progressWidth }"
+              :style="progressBarStyle"
             ></div>
           </div>
         </div>
@@ -60,7 +65,7 @@
           <div class="v-divider"></div>
           <input
             v-model="condNote"
-            placeholder="오늘의 한줄 메모"
+            placeholder="오늘의 한 줄 메모"
             class="clean-input grow"
             aria-label="컨디션 메모"
           />
@@ -145,22 +150,22 @@
             </div>
 
             <div class="capsule">
-              <label>총 칼로리(Kcal)</label>
+              <label>Kcal</label>
               <input v-model.number="kcal" type="number" min="0" placeholder="0" aria-label="칼로리" />
             </div>
 
             <div class="capsule">
-              <label>탄수화물(g)</label>
+              <label>탄(g)</label>
               <input v-model.number="carb" type="number" min="0" step="0.1" placeholder="0" aria-label="탄수화물" />
             </div>
 
             <div class="capsule">
-              <label>단백질(g)</label>
+              <label>단(g)</label>
               <input v-model.number="protein" type="number" min="0" step="0.1" placeholder="0" aria-label="단백질" />
             </div>
 
             <div class="capsule">
-              <label>지방(g)</label>
+              <label>지(g)</label>
               <input v-model.number="fat" type="number" min="0" step="0.1" placeholder="0" aria-label="지방" />
             </div>
 
@@ -193,7 +198,7 @@
                       {{ m.name }} <span class="mc-gram">{{ m.grams }}g</span>
                     </div>
                     <div class="mc-nutri">
-                      {{ Number(m.kcal || 0).toFixed(0) }} kcal · 탄 {{ m.carb }}g · 단 {{ m.protein }}g · 지 {{ m.fat }}g
+                      {{ Number(m.kcal || 0).toFixed(0) }} kcal · 탄 {{ m.carb }} · 단 {{ m.protein }} · 지 {{ m.fat }}
                     </div>
                   </div>
                   <button class="mc-delete" type="button" @click="delMeal(m.id)" aria-label="삭제">🗑️</button>
@@ -211,19 +216,51 @@
 import { computed, ref, watch } from "vue"
 import { useDayStore } from "@/stores/day"
 import { useProfileStore } from "@/stores/profile"
-const profile = useProfileStore()
+import { useAuthStore } from "@/stores/auth"
 
 const props = defineProps({
   date: { type: String, required: true },
 })
-const emit = defineEmits(["close"])
+defineEmits(["close"])
 
 const day = useDayStore()
+const profile = useProfileStore()
+const auth = useAuthStore()
+
+/**
+ * ✅ 로그인 유저가 바뀔 때만 프로필 재조회
+ * - id가 없으면(로그아웃) me 비움
+ * - id가 바뀌면(계정 전환) me 비우고 fetch
+ */
+watch(
+  () => auth.me?.id,
+  async (id, prev) => {
+    if (!id) {
+      profile.me = null
+      return
+    }
+    if (prev && id !== prev) {
+      profile.me = null
+    }
+    await profile.fetchMe()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => props.date,
+  async (d) => {
+    if (!d) return
+    await day.fetchDay(d)
+    resetForm()
+  },
+  { immediate: true }
+)
+
 const detail = computed(() => day.detail)
 const loading = computed(() => day.loading)
 const error = computed(() => day.error)
 
-/** ✅ detail이 null이어도 템플릿이 안전하도록 */
 const detailSafe = computed(() => {
   return (
     detail.value ?? {
@@ -238,20 +275,72 @@ const detailSafe = computed(() => {
   )
 })
 
-const progressWidth = computed(() => {
+/**
+ * ✅ TDEE 계산: profile.me만 신뢰
+ * - 값이 없거나 NaN이면 null
+ */
+const userTdeeRaw = computed(() => {
+  const p = profile.me
+  if (!p) return null
+
+  const weight = Number(p.weight)
+  const height = Number(p.height)
+  const age = Number(p.age)
+  const gender = p.gender
+  const activityLevel = Number(p.activity_level)
+
+  if (!Number.isFinite(weight) || !Number.isFinite(height) || !Number.isFinite(age)) return null
+  if (!gender) return null
+
+  let base = 0
+  if (gender === "male" || gender === "M") {
+    base = 66.47 + 13.75 * weight + 5 * height - 6.76 * age
+  } else {
+    base = 655.1 + 9.56 * weight + 1.85 * height - 4.68 * age
+  }
+
+  const activityMap = { 1: 1.2, 2: 1.375, 3: 1.55, 4: 1.725, 5: 1.9 }
+  const multiplier = activityMap[activityLevel] || 1.2
+
+  return Math.round(base * multiplier)
+})
+
+/**
+ * ✅ 프로그레스 바 계산용 숫자 (0/undefined 방어)
+ */
+const userTdeeNumber = computed(() => userTdeeRaw.value ?? 2000)
+
+/**
+ * ✅ 템플릿 표시용 문자열 (여기서 toLocaleString 안전하게)
+ */
+const userTdeeText = computed(() => userTdeeNumber.value.toLocaleString())
+
+/**
+ * ✅ 프로그레스 바 스타일
+ */
+const progressBarStyle = computed(() => {
   const kcal = Number(detailSafe.value.total_kcal || 0)
-  const pct = Math.min((kcal / 2500) * 100, 100)
-  return `${pct}%`
+  const tdee = userTdeeNumber.value
+  const ratio = kcal / tdee
+  const pct = Math.min(ratio * 100, 100)
+
+  let background = "linear-gradient(90deg, #ff9a9e 0%, #db1f4b 100%)"
+  let boxShadow = "none"
+
+  if (ratio > 1.0) {
+    background = "linear-gradient(90deg, #ff512f, #dd2476)"
+    boxShadow = "0 0 30px rgba(221, 36, 118, 0.4)"
+  }
+
+  return {
+    width: `${pct}%`,
+    background,
+    boxShadow,
+    transition: "width 0.5s ease, background 0.5s ease",
+  }
 })
 
-// 날짜 분리
-const dateParts = computed(() => {
-  if (!props.date) return { y: "", m: "", d: "" }
-  const [y, m, d] = props.date.split("-")
-  return { y, m, d }
-})
-
-// 상태
+// 이하 상태/메서드들은 네 코드 그대로 유지
 const condEmoji = ref("")
 const condNote = ref("")
 const weight = ref(null)
@@ -264,12 +353,10 @@ const carb = ref(null)
 const protein = ref(null)
 const fat = ref(null)
 
-// 검색
 const searchQuery = ref("")
 const searchResults = ref([])
 const selectedFood = ref(null)
 
-// Mock DB (100g 기준)
 const mockFoodDB = [
   { id: 1, name: "현미밥", kcal: 150, carb: 32, protein: 3, fat: 1 },
   { id: 2, name: "닭가슴살 (삶은것)", kcal: 109, carb: 0, protein: 23, fat: 1.2 },
@@ -279,21 +366,8 @@ const mockFoodDB = [
   { id: 6, name: "사과", kcal: 57, carb: 14, protein: 0.3, fat: 0.2 },
   { id: 7, name: "바나나", kcal: 89, carb: 22.8, protein: 1.1, fat: 0.3 },
   { id: 8, name: "우유", kcal: 65, carb: 5, protein: 3, fat: 3.2 },
-
 ]
 
-// 날짜 변경 시 fetch
-watch(
-  () => props.date,
-  async (d) => {
-    if (!d) return
-    await day.fetchDay(d)
-    resetForm()
-  },
-  { immediate: true }
-)
-
-// store detail 반영
 watch(
   detailSafe,
   (v) => {
@@ -304,7 +378,6 @@ watch(
   { immediate: true }
 )
 
-// grams 변경 시 자동 계산(선택된 음식이 있을 때만)
 watch(grams, (newGrams) => {
   const g = Number(newGrams || 0)
   if (!selectedFood.value || g <= 0) return
@@ -315,7 +388,6 @@ watch(grams, (newGrams) => {
   fat.value = Number((selectedFood.value.fat * ratio).toFixed(1))
 })
 
-// Methods
 function resetForm() {
   foodName.value = ""
   grams.value = null
@@ -331,7 +403,6 @@ function resetForm() {
 function resetSelection() {
   selectedFood.value = null
   foodName.value = ""
-  // 선택 해제하면 자동계산 값도 같이 초기화(원하면 유지해도 됨)
   kcal.value = null
   carb.value = null
   protein.value = null
@@ -342,8 +413,6 @@ function performSearch() {
   const q = searchQuery.value.trim()
   if (!q) return
   const query = q.toLowerCase()
-
-  // ✅ 양쪽 다 lower 비교
   searchResults.value = mockFoodDB.filter((f) => f.name.toLowerCase().includes(query))
 }
 
@@ -353,7 +422,6 @@ function selectFoodItem(item) {
   searchResults.value = []
   searchQuery.value = ""
 
-  // 이미 grams가 있으면 즉시 계산
   const g = Number(grams.value || 0)
   if (g > 0) {
     const ratio = g / 100
@@ -383,15 +451,11 @@ async function saveCondition() {
 
 async function saveWeight() {
   if (weight.value === null || weight.value === "") return
-
-  // 서버에 해당 날짜의 몸무게 저장
   await day.setWeight(weight.value)
 
-  // 오늘 날짜 여부 확인 (로컬 타임존 기준, YYYY-MM-DD)
   const t = new Date()
   const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
 
-  // props.date가 오늘이면 프로필의 현재 체중도 업데이트
   if (props.date === todayStr) {
     try {
       await profile.updateMe({ weight: Number(weight.value) })
@@ -414,7 +478,6 @@ async function addMeal() {
     sugar: 0,
     sodium: 0,
   })
-
   const currentType = mealType.value
   resetForm()
   mealType.value = currentType
@@ -427,9 +490,9 @@ async function delMeal(id) {
 }
 </script>
 
+
 <style scoped>
-/* ✅ scoped에서도 변수 적용되도록 wrapper에 선언 */
-.meal-content{
+.meal-content {
   --primary: #db1f4b;
   --primary-hover: #b9153b;
   --bg-soft: #f8f9fa;
@@ -445,61 +508,12 @@ async function delMeal(id) {
   padding: 5%;
 }
 
-/* 폰트는 프로젝트 글로벌(예: main.css)에서 선언하는 것을 권장.
-   여기서는 scoped로 쓰되, 경로가 맞는지 확인 필요 */
-@font-face {
-  font-family: 'AritaDotumKR';
-  src: url('@/assets/fonts/AritaDotumKR-Medium.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'AritaDotumKR';
-  src: url('@/assets/fonts/AritaDotumKR-Bold.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-}
-
 * {
   font-family: 'AritaDotumKR', sans-serif;
   box-sizing: border-box;
 }
-img, svg { display:block; }
 
-/* --- Header --- */
-.head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 18px;
-}
-.h-title {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  min-width: 0;
-}
-.date-highlight {
-  font-size: 32px;
-  font-weight: 700;
-  color: var(--primary);
-  line-height: 1;
-}
-.date-sub { display: flex; flex-direction: column; }
-.year-mon { font-size: 14px; color: var(--text-sub); font-weight: 500; }
-.day-label { font-size: 12px; color: var(--text-sub); opacity: 0.85; }
-.close-btn {
-  background: transparent;
-  border: none;
-  font-size: 20px;
-  color: #c7c7c7;
-  cursor: pointer;
-  transition: color 0.2s;
-  line-height: 1;
-}
-.close-btn:hover { color: #333; }
-
-/* --- State --- */
+/* State Box */
 .state-box {
   padding: 28px 0;
   text-align: center;
@@ -520,7 +534,7 @@ img, svg { display:block; }
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* --- Dashboard --- */
+/* Dashboard */
 .dashboard-grid {
   display: grid;
   grid-template-columns: 1.15fr 1.85fr;
@@ -530,6 +544,7 @@ img, svg { display:block; }
 @media (max-width: 520px) {
   .dashboard-grid { grid-template-columns: 1fr; }
 }
+
 .nutri-card {
   background: white;
   border-radius: 16px;
@@ -544,24 +559,58 @@ img, svg { display:block; }
   background: linear-gradient(135deg, #fff0f5 0%, #fff 100%);
   border-color: #ffe0e6;
 }
-.card-label { font-size: 12px; color: var(--text-sub); margin-bottom: 4px; }
-.card-value.main { font-size: 24px; font-weight: 800; color: var(--primary); }
-.card-value .unit { font-size: 14px; font-weight: 500; color: var(--text-sub); margin-left: 4px; }
+
+.card-label {
+  font-size: 12px;
+  color: var(--text-sub);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bmr-label {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 400;
+}
+
+.card-value.main {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--primary);
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+.card-value .unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-sub);
+  margin-left: 4px;
+}
+.bmr-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #999;
+  margin-left: 6px;
+}
 
 .progress-bar-bg {
   width: 100%;
-  height: 6px;
-  background: #eee;
+  height: 8px; /* 높이 약간 조정 */
+  background: rgba(0,0,0,0.06); /* 배경색 조금 더 진하게 */
   border-radius: 999px;
-  margin-top: 10px;
+  margin-top: 12px;
   overflow: hidden;
 }
 .progress-bar-fill {
   height: 100%;
   background: var(--primary);
   border-radius: 999px;
-  transition: width 0.5s ease;
+  /* transition은 script에서 직접 바인딩으로 처리됨 */
 }
+
+/* Sub Stats */
 .sub-stats {
   display: flex;
   flex-direction: column;
@@ -581,12 +630,12 @@ img, svg { display:block; }
 .n-label { font-size: 13px; color: #666; font-weight: 500; }
 .n-val { font-size: 14px; font-weight: 700; color: #333; }
 
-/* --- Daily Check --- */
+/* Daily Check */
 .daily-check-row {
   display: flex;
   gap: 12px;
   margin-bottom: 18px;
-  flex-wrap: wrap; /* ✅ 좁으면 내려가게 */
+  flex-wrap: wrap;
 }
 .check-item {
   flex: 1 1 240px;
@@ -599,13 +648,8 @@ img, svg { display:block; }
   gap: 8px;
   min-width: 0;
 }
-/* body row에서 몸무게 박스가 남는 공간을 먹지 않게 */
-.weight-item{
-  flex: 0 0 auto;     /* ✅ grow=0 */
-  width: fit-content; /* ✅ 내용만큼 */
-}
-
-.check-icon { font-size: 13px; white-space: pre-line; white-space: nowrap;}
+.weight-item { flex: 0 0 auto; width: fit-content; }
+.check-icon { font-size: 13px; white-space: nowrap; }
 .v-divider { width: 1px; height: 16px; background: #eee; }
 .clean-input, .clean-select {
   border: none;
@@ -629,7 +673,7 @@ img, svg { display:block; }
 }
 .icon-btn:hover { opacity: 1; }
 
-/* --- Add Meal Card --- */
+/* Add Meal Card */
 .add-meal-card {
   background: #ffffff;
   border: 1px solid #eee;
@@ -641,7 +685,6 @@ img, svg { display:block; }
 .card-header { margin-bottom: 12px; }
 .title-text { font-size: 14px; font-weight: 700; color: #333; }
 
-/* Search */
 .search-wrapper {
   position: relative;
   display: flex;
@@ -665,13 +708,16 @@ img, svg { display:block; }
   outline: none;
 }
 .search-icon-btn {
-  background: #333;
-  color: white;
-  border: none;
-  border-radius: 12px;
   width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9f9f9;
+  color: white;
+  border: 1px solid transparent;
+  border-radius: 12px;
   cursor: pointer;
-  font-size: 16px;
 }
 
 .search-dropdown {
@@ -700,7 +746,7 @@ img, svg { display:block; }
 .res-info-main { font-weight: 600; color: #333; margin-bottom: 2px; }
 .res-info-sub { font-size: 12px; color: #888; }
 
-/* Inputs */
+/* Inputs Area */
 .input-area { display: flex; flex-direction: column; gap: 12px; }
 .row-top { display: flex; gap: 8px; align-items: center; min-height: 40px; flex-wrap: wrap; }
 .styled-select, .styled-input {
@@ -760,7 +806,7 @@ img, svg { display:block; }
   .nutrient-capsules {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .add-btn-gradient { width: 100%; }
+  .add-btn-gradient { width: 100%; grid-column: span 2; }
 }
 .capsule {
   display: flex;
@@ -860,7 +906,7 @@ img, svg { display:block; }
 }
 .mc-delete:hover { background: #ffebee; }
 
-/* Empty */
+/* Empty State */
 .empty-state {
   text-align: center;
   padding: 36px 0;
