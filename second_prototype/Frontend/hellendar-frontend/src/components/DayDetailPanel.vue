@@ -210,6 +210,8 @@
 <script setup>
 import { computed, ref, watch } from "vue"
 import { useDayStore } from "@/stores/day"
+import { useProfileStore } from "@/stores/profile"
+const profile = useProfileStore()
 
 const props = defineProps({
   date: { type: String, required: true },
@@ -381,7 +383,22 @@ async function saveCondition() {
 
 async function saveWeight() {
   if (weight.value === null || weight.value === "") return
+
+  // 서버에 해당 날짜의 몸무게 저장
   await day.setWeight(weight.value)
+
+  // 오늘 날짜 여부 확인 (로컬 타임존 기준, YYYY-MM-DD)
+  const t = new Date()
+  const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
+
+  // props.date가 오늘이면 프로필의 현재 체중도 업데이트
+  if (props.date === todayStr) {
+    try {
+      await profile.updateMe({ weight: Number(weight.value) })
+    } catch (e) {
+      console.error("프로필 체중 동기화 실패:", e)
+    }
+  }
 }
 
 async function addMeal() {
