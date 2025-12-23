@@ -22,7 +22,7 @@
             <template v-else-if="auth.me">
               <span class="user-profile">
                 <RouterLink v-if="auth.me" to="/profile" class="user-id">
-                  {{ auth.me.email }}
+                  {{ auth.me.name }} 님
                 </RouterLink>
               </span>
               <!-- 클래스 추가 및 클릭 핸들러 수정 -->
@@ -222,6 +222,19 @@ async function confirmLogout() {
   padding: 8px 12px; /* 패딩 추가 */
 }
 .auth-link:hover { color: #212529; }
+
+.user-id {
+  color: #495057;
+  text-decoration: none;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
+
+.user-id:hover {
+  color: #DB1F4B;
+  text-decoration: underline;
+}
+
 
 .btn {
   padding: 8px 16px;

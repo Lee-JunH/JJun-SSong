@@ -10,7 +10,6 @@
         <div class="nav-links">
           <a href="#" class="active">캘린더</a>
           <a href="#">리포트</a>
-          <a href="#">설정</a>
         </div>
         <div class="user-profile">
           <div class="avatar">U</div>
@@ -74,7 +73,7 @@
           <div class="modal-body">
             <DayDetailPanel 
               v-if="selectedDate" 
-              :date="selectedDate" 
+              :date="selectedDate"
               @close="closeModal" 
             />
           </div>
@@ -295,7 +294,7 @@ async function toggleMeal(date, mealType) {
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 2000;
 }
 
 .modal-content {
