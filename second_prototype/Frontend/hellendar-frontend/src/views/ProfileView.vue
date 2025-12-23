@@ -12,7 +12,12 @@
             <h1 class="greeting">안녕하세요, {{ displayName }}님! 👋</h1>
             <p class="summary">
               현재 <span class="highlight">{{ bmiStatus }}</span> 상태이며,
-              목표까지 <span class="highlight">{{ weightDiff }}kg</span> 남았어요.
+              <template v-if="goalReachedText">
+                <span class="goal-msg">{{ goalReachedText }}</span>
+              </template>
+              <template v-else>
+                목표까지 <span class="highlight">{{ weightDiff }}kg</span> 남았어요.
+              </template>
             </p>
           </div>
         </div>
@@ -43,9 +48,9 @@
         <article class="stat-card highlight">
           <div class="card-icon pink">💪</div>
           <h3 class="card-title">현재 체중</h3>
-          <p class="card-value">{{ profileData.weight }} <span class="unit">kg</span></p>
+          <p class="card-value">{{ currentWeightText }} <span class="unit">kg</span></p>
           <p class="card-desc">
-            시작보다 {{ (profileData.weight - (profileData.start_weight ?? profileData.weight)).toFixed(1) }}kg 변화
+            시작보다 {{ ((currentWeight ?? 0) - (profileData.start_weight ?? (currentWeight ?? 0))).toFixed(1) }}kg 변화
           </p>
         </article>
       </section>
@@ -82,8 +87,8 @@
             <div class="progress-bar" :style="progressBarStyle"></div>
 
             <div class="current-marker" :style="{ left: progressPercent + '%' }">
-              <div class="marker-dot"></div>
-              <span class="marker-label">현재 {{ profileData.weight }}</span>
+              <div class="marker-dot" :style="markerDotStyle"></div>
+              <span class="marker-label" :style="markerLabelStyle">현재 {{ currentWeightText }}</span>
             </div>
           </div>
         </div>
@@ -166,6 +171,24 @@ onMounted(async () => {
   fetchProfile()
 })
 
+const currentWeight = computed(() => {
+  const p = profileData.value
+  if (!p) return null
+
+  // weight가 null/undefined/"" 이면 start_weight로 대체
+  const w = p.weight
+  if (w !== null && w !== undefined && w !== "") return Number(w)
+
+  const sw = p.start_weight
+  if (sw !== null && sw !== undefined && sw !== "") return Number(sw)
+
+  return null
+})
+
+const currentWeightText = computed(() => {
+  return currentWeight.value == null ? "-" : Number(currentWeight.value).toFixed(1)
+})
+
 function handleSave(saved) {
   // MyProfile에서 PATCH 성공 후 전달된 최신 데이터
   profileData.value = saved
@@ -187,12 +210,37 @@ function openModal() {
 }
 
 /* ---------- Computed Stats ---------- */
+
+const goalReachedText = computed(() => {
+  if (!profileData.value) return ""
+
+  const start = Number(profileData.value.start_weight)
+  const goal = Number(profileData.value.goal_weight)
+  const current = Number(profileData.value.weight)
+
+  // 값이 하나라도 없으면 멘트 없음
+  if (!Number.isFinite(start) || !Number.isFinite(goal) || !Number.isFinite(current)) return ""
+
+  // 시작 > 목표 : 감량 목표 → current <= goal 이면 달성
+  if (start > goal && current <= goal) return "목표 체중에 도달했습니다!"
+
+  // 시작 < 목표 : 증량 목표 → current >= goal 이면 달성
+  if (start < goal && current >= goal) return "목표 체중에 도달했습니다!"
+
+  // 시작 == 목표 : 현재가 목표와 같으면 달성
+  if (start === goal && current === goal) return "목표 체중에 도달했습니다!"
+
+  return ""
+})
+
+
 const bmiValue = computed(() => {
-  if (!profileData.value?.height || !profileData.value?.weight) return 0
+  if (!profileData.value?.height || currentWeight.value == null) return 0
   const h = profileData.value.height / 100
-  const w = profileData.value.weight
+  const w = currentWeight.value
   return (w / (h * h)).toFixed(1)
 })
+
 
 const bmiStatus = computed(() => {
   const bmi = parseFloat(bmiValue.value)
@@ -213,7 +261,9 @@ const bmiClass = computed(() => {
 
 const bmrValue = computed(() => {
   if (!profileData.value) return 0
-  const { gender, weight, height, age, activity_level } = profileData.value
+  const { gender, height, age, activity_level } = profileData.value
+  const weight = currentWeight.value
+
   if (!weight || !height || !age) return 0
 
   let base = 0
@@ -227,48 +277,90 @@ const bmrValue = computed(() => {
 })
 
 const weightDiff = computed(() => {
-  if (!profileData.value?.weight || !profileData.value?.goal_weight) return 0
-  return Math.abs(profileData.value.weight - profileData.value.goal_weight).toFixed(1)
+  if (currentWeight.value == null || !profileData.value?.goal_weight) return 0
+  return Math.abs(currentWeight.value - profileData.value.goal_weight).toFixed(1)
 })
+
 
 const progressPercent = computed(() => {
   if (!profileData.value) return 0
-  const { start_weight, goal_weight, weight } = profileData.value
-  if (start_weight == null || goal_weight == null || weight == null) return 0
 
-  const totalDiff = Math.abs(start_weight - goal_weight)
-  const currentDiff = Math.abs(start_weight - weight)
+  const start = Number(profileData.value.start_weight)
+  const goal = Number(profileData.value.goal_weight)
 
-  if (totalDiff === 0) return 100
-  const pct = (currentDiff / totalDiff) * 100
-  return Math.min(Math.max(pct, 0), 100)
+  // ✅ 캘린더에서 체중 입력이 없으면 start_weight를 현재로 간주 (안전)
+  const currentRaw = profileData.value.weight ?? profileData.value.start_weight
+  const current = Number(currentRaw)
+
+  if ([start, goal, current].some((v) => Number.isNaN(v))) return 0
+  if (start === goal) return current === goal ? 100 : 0
+
+  // 감량 목표: start > goal  → 진행 = (start - current) / (start - goal)
+  if (start > goal) {
+    const denom = start - goal
+    const numer = start - current
+    const ratio = numer / denom // numer < 0 이면 역방향(증가)
+    return Math.min(Math.max(ratio * 100, 0), 100) // ✅ 역방향이면 0%로 고정
+  }
+
+  // 증량 목표: start < goal → 진행 = (current - start) / (goal - start)
+  const denom = goal - start
+  const numer = current - start
+  const ratio = numer / denom // numer < 0 이면 역방향(감소)
+  return Math.min(Math.max(ratio * 100, 0), 100)   // ✅ 역방향이면 0%로 고정
 })
+
 
 const isGoalAchieved = computed(() => {
   if (!profileData.value) return false
-  const { start_weight, goal_weight, weight } = profileData.value
+  const { start_weight, goal_weight } = profileData.value
+  const weight = currentWeight.value
   if (start_weight == null || goal_weight == null || weight == null) return false
 
   const start = Number(start_weight)
   const goal = Number(goal_weight)
   const current = Number(weight)
 
-  // 시작 < 목표 : 증량 목표 → current >= goal 이면 달성
   if (start < goal) return current >= goal
-
-  // 시작 > 목표 : 감량 목표 → current <= goal 이면 달성
   if (start > goal) return current <= goal
-
-  // 시작 == 목표 : 애매하지만, 현재가 목표와 같으면 달성으로 처리
   return current === goal
 })
 
+
 const progressBarStyle = computed(() => {
+  // 기존 width는 그대로 사용
+  const width = progressPercent.value + "%"
+
+  // ✅ 달성: 초록 그라데이션 + 은은한 글로우
+  if (isGoalAchieved.value) {
+    return {
+      width,
+      background: "linear-gradient(90deg, #86efac 0%, #16a34a 55%, #0f766e 100%)",
+      boxShadow: "0 6px 16px rgba(22, 163, 74, 0.25)",
+    }
+  }
+
+  // ✅ 미달성: 핑크 그라데이션 (기존 톤 유지)
   return {
-    width: progressPercent.value + "%",
-    background: isGoalAchieved.value ? "#16a34a" : "#db1f4b", // 초록 / 기존 핑크
+    width,
+    background: "linear-gradient(90deg, #ff9a9e 0%, #db1f4b 60%, #b9153b 100%)",
+    boxShadow: "none",
   }
 })
+
+const markerDotStyle = computed(() => {
+  // dot 테두리색을 progress와 동기화
+  return {
+    borderColor: isGoalAchieved.value ? "#16a34a" : "#db1f4b",
+  }
+})
+
+const markerLabelStyle = computed(() => {
+  return {
+    color: isGoalAchieved.value ? "#16a34a" : "#db1f4b",
+  }
+})
+
 
 </script>
 
@@ -295,7 +387,7 @@ const progressBarStyle = computed(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 40px;
-  background: white;
+  background: rgb(255, 255, 255);
   padding: 30px;
   border-radius: 24px;
   box-shadow: 0 4px 20px rgba(0,0,0,0.03);
@@ -430,12 +522,23 @@ const progressBarStyle = computed(() => {
   display: flex; flex-direction: column; align-items: center;
 }
 .marker-dot {
-  width: 20px; height: 20px; background: white; border: 4px solid #db1f4b; border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  background: white;
+  border: 4px solid;         /* ✅ 색상은 인라인(style)에서 주입 */
+  border-radius: 50%;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
 .marker-label {
-  position: absolute; top: 24px; font-size: 12px; font-weight: 700; color: #db1f4b; white-space: nowrap;
+  position: absolute;
+  top: 24px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  /* ✅ color는 인라인(style)에서 주입 */
 }
+
 
 .empty-state {
   height: 80vh; display: flex; align-items: center; justify-content: center; color: #9ca3af;

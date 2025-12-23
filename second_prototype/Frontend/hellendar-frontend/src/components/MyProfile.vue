@@ -71,29 +71,19 @@
           </div>
         </div>
 
-        <!-- 3. 체중 관리 섹션 -->
+        <!-- 3. 체중 관리 섹션 (시작/목표만) -->
         <div class="weight-section">
-          <label class="label">체중 기록</label>
-          <div class="weight-grid">
-            <div class="weight-item">
+          <label class="label">체중 목표</label>
+
+          <!-- ✅ 2칸 구성으로 변경 -->
+          <div class="weight-grid two">
+            <!-- ✅ 시작: 기존 "현재" highlight 스타일 적용 -->
+            <div class="weight-item highlight">
               <span class="sub-label">시작</span>
               <div class="input-wrapper sm">
                 <input
                   type="number"
                   v-model.number="localForm.start_weight"
-                  placeholder="0"
-                  class="input-box"
-                />
-                <span class="unit">kg</span>
-              </div>
-            </div>
-
-            <div class="weight-item highlight">
-              <span class="sub-label">현재</span>
-              <div class="input-wrapper sm">
-                <input
-                  type="number"
-                  v-model.number="localForm.weight"
                   placeholder="0"
                   class="input-box bold"
                 />
@@ -159,12 +149,15 @@ const props = defineProps({
 const emit = defineEmits(["save", "close"])
 const isLoading = ref(false)
 
-/** ✅ 템플릿(v-model)과 동일한 snake_case로 통일 */
+/** ✅ snake_case 통일 */
 const localForm = ref({
   gender: "female",
   age: null,
   height: null,
+
+  // ✅ 현재(weight) 입력 제거 (데이터는 서버/기존값으로 유지될 수 있음)
   weight: null,
+
   start_weight: null,
   goal_weight: null,
   activity_level: null,
@@ -189,31 +182,38 @@ const currentActivityDesc = computed(() => {
   return selected ? selected.desc : "라이프스타일에 맞는 활동량을 골라주세요."
 })
 
-/** ✅ payload도 snake_case 그대로, 숫자만 안전하게 변환 */
+/** ✅ payload: start/goal 중심. (weight는 기본적으로 보내지 않음) */
 function toPayload(form) {
   const n = (v) => (v === null || v === "" || v === undefined ? null : Number(v))
-  return {
+
+  const payload = {
     gender: form.gender,
     age: n(form.age),
     height: n(form.height),
-    weight: n(form.weight),
     start_weight: n(form.start_weight),
     goal_weight: n(form.goal_weight),
     activity_level: n(form.activity_level),
   }
+
+  // ✅ 옵션 A) 서버가 weight를 "필수"로 요구하면 시작체중으로 자동 세팅해서 보내기
+  // payload.weight = n(form.start_weight)
+
+  // ✅ 옵션 B) 서버가 기존 weight를 유지하고 싶으면(초기 데이터에 weight가 있으면) 그대로 보내기
+  // payload.weight = n(form.weight ?? form.start_weight)
+
+  return payload
 }
 
 async function saveProfile() {
-  if (!localForm.value.height || !localForm.value.weight) {
-    alert("키와 몸무게는 필수입니다!")
+  // ✅ 현재 입력을 없앴으므로, 최소 필수값 기준 재정의
+  if (!localForm.value.height || !localForm.value.start_weight) {
+    alert("키와 시작 체중은 필수입니다!")
     return
   }
 
   isLoading.value = true
   try {
     const payload = toPayload(localForm.value)
-
-    // ✅ 백엔드 URL: /api/profile/me/ 이면 axios에선 "/profile/me/"
     const res = await http.patch("/profile/me/", payload)
 
     emit("save", res.data)
@@ -228,8 +228,6 @@ async function saveProfile() {
   }
 }
 </script>
-
-
 
 <style scoped>
 /* ===== 기존 디자인 그대로 ===== */
@@ -408,12 +406,17 @@ async function saveProfile() {
   border-radius: 18px;
   padding: 16px;
 }
+
+/* ✅ 2칸용 그리드 추가 */
 .weight-grid {
   display: grid;
-  grid-template-columns: 1fr 1.2fr 1fr;
   gap: 10px;
   align-items: end;
 }
+.weight-grid.two {
+  grid-template-columns: 1fr 1fr;
+}
+
 .weight-item {
   text-align: center;
 }
@@ -423,22 +426,28 @@ async function saveProfile() {
   color: #6b7280;
   margin-bottom: 4px;
 }
+
+/* ✅ highlight(원래 '현재')를 '시작'에 적용 */
 .weight-item.highlight .sub-label {
   color: #db1f4b;
   font-weight: 700;
 }
+
 .input-wrapper.sm .input-box {
   padding: 8px 6px;
   padding-right: 26px;
   text-align: center;
   font-size: 14px;
 }
+
+/* ✅ bold(원래 '현재')를 '시작'에 적용 */
 .input-wrapper.sm .input-box.bold {
   font-weight: 700;
   color: #db1f4b;
   background: #fff;
   border-color: #ffe4e8;
 }
+
 .input-wrapper.sm .unit {
   right: 6px;
   font-size: 11px;
