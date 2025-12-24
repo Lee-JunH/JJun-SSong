@@ -24,6 +24,16 @@
         <button class="edit-btn" @click="openModal">
           정보 수정
         </button>
+        <button class="edit-btn" @click="openAccountModal">
+          회원정보 수정
+        </button>
+
+        <AccountManageModal
+          v-if="isAccountModalOpen"
+          @close="isAccountModalOpen = false"
+          @loggedOut="handleLoggedOut"
+        />
+
       </header>
 
       <!-- 메인 스탯 그리드 -->
@@ -119,12 +129,14 @@ import { useRouter } from "vue-router"
 import http from "@/api/http"
 import MyProfile from "@/components/MyProfile.vue"
 import { useAuthStore } from "@/stores/auth"  
+import AccountManageModal from "@/components/AccountManageModal.vue"
 
 const router = useRouter()
 const auth = useAuthStore() 
 
 const profileData = ref(null)
 const isModalOpen = ref(false)
+const isAccountModalOpen = ref(false)
 const loading = ref(false)
 const displayName = computed(() => {
   // 백엔드에 따라 username / name / nickname 중 하나일 수 있으니 안전하게
@@ -214,6 +226,15 @@ function handleClose() {
 
 function openModal() {
   isModalOpen.value = true
+}
+
+function openAccountModal() {
+  isAccountModalOpen.value = true
+}
+
+function handleLoggedOut() {
+  // 로그아웃/탈퇴 이후 공통 이동
+  router.replace("/login")
 }
 
 /* ---------- Computed Stats ---------- */
