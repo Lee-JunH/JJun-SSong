@@ -122,10 +122,10 @@ const activeBtn = ref(null)
 
 onMounted(async () => {
   // ✅ 새로고침 후 리포트 자동 오픈 플래그 처리
-  const nextView = sessionStorage.getItem("healendar_next_view")
+  const nextView = sessionStorage.getItem("hellendar_next_view")
   if (nextView) {
    currentView.value = nextView
-    sessionStorage.removeItem("healendar_next_view")
+    sessionStorage.removeItem("hellendar_next_view")
   }
 
   await cal.fetchMonth(month.value)
@@ -145,7 +145,7 @@ function goReportWithReload() {
   if (currentView.value === "report") return
 
   // ✅ 새로고침 후 리포트로 열리게 플래그 저장
-  sessionStorage.setItem("healendar_next_view", "report")
+  sessionStorage.setItem("hellendar_next_view", "report")
 
   // ✅ “리포트 선택 시 자동 새로고침 1회”
   window.location.reload()

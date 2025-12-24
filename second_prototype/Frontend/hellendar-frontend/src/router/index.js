@@ -4,7 +4,7 @@ import { useAuthStore } from "@/stores/auth"
 import HomeView from "@/views/HomeView.vue"
 import FeaturesView from "@/views/FeaturesView.vue"
 import StartView from "@/views/StartView.vue"
-import MyHealendarView from "@/views/MyHealendarView.vue"
+import MyHellendarView from "@/views/MyHellendarView.vue"
 import LoginView from "@/views/LoginView.vue"
 import SignupView from "@/views/SignupView.vue"
 
@@ -16,7 +16,7 @@ const router = createRouter({
     { path: "/start", component: StartView },
     { path: "/login", component: LoginView },
     { path: "/signup", component: SignupView },
-    { path: "/my", component: MyHealendarView, meta: { requiresAuth: true } },
+    { path: "/my", component: MyHellendarView, meta: { requiresAuth: true } },
     { path: "/profile", name: "profile", component: () => import("@/views/ProfileView.vue"), meta: { requiresAuth: true } },
   ],
   scrollBehavior(to, from, savedPosition) {
