@@ -50,8 +50,14 @@ export const useProfileStore = defineStore("profile", {
       )
     },
   },
-
+  
   actions: {
+    reset() {
+      this.me = null
+      this.loading = false
+      this.error = ""
+      this.loaded = false
+    },
     async fetchMe(force = false) {
       if (this.loaded && !force) return
 

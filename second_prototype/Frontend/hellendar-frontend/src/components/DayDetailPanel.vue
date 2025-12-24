@@ -269,14 +269,13 @@ const cal = useCalendarStore()
 watch(
   () => auth.me?.id,
   async (id, prev) => {
-    if (!id) {
-      profile.me = null
-      return
-    }
+    // ✅ 계정이 바뀌면 profile store 초기화
     if (prev && id !== prev) {
-      profile.me = null
+      profile.$reset()
     }
-    await profile.fetchMe()
+    if (id) {
+      await profile.fetchMe(true)  // ✅ force로 새 데이터 가져오기
+    }
   },
   { immediate: true }
 )
@@ -315,7 +314,8 @@ const userTdeeRaw = computed(() => {
   const p = profile.me
   if (!p) return null
 
-  const weight = Number(p.weight)
+  const weightRaw = (p.weight ?? p.start_weight)
+  const weight = Number(weightRaw)
   const height = Number(p.height)
   const age = Number(p.age)
   const gender = p.gender
