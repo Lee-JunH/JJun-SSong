@@ -124,7 +124,7 @@
             <ul v-if="searchResults.length > 0" class="search-dropdown" role="listbox">
               <li
                 v-for="item in searchResults"
-                :key="item.id"
+                :key="`${item.source}-${item.id}`"
                 @mousedown.prevent
                 @click="selectFoodItem(item)"
                 role="option"
@@ -229,13 +229,11 @@
                     </div>
                     <div class="mc-nutri">
                       {{ Number(m.kcal || 0).toFixed(0) }} kcal 
-                      <span class="divider">·</span> 탄 {{ m.carb }} 
-                      <span class="divider">·</span> 단 {{ m.protein }} 
-                      <span class="divider">·</span> 지 {{ m.fat }}
-                      <!-- 리스트에도 당/나트륨 정보가 있다면 표시 -->
-                      <span v-if="m.sugar || m.sodium" class="divider">·</span>
-                      <span v-if="m.sugar" class="mc-sub-info">당 {{ m.sugar }}</span>
-                      <span v-if="m.sodium" class="mc-sub-info">나 {{ m.sodium }}</span>
+                      <span class="divider">·</span> 탄 {{ m.carb }}g
+                      <span class="divider">·</span> 단 {{ m.protein }}g
+                      <span class="divider">·</span> 지 {{ m.fat }}g
+                      <span class="divider">·</span> 당 {{ m.sugar }}g
+                      <span class="divider">·</span> 나 {{ m.sodium }}mg
                     </div>
                   </div>
                   <button class="mc-delete" type="button" @click="delMeal(m.id)" aria-label="삭제">🗑️</button>
@@ -256,6 +254,7 @@ import { useProfileStore } from "@/stores/profile"
 import { useAuthStore } from "@/stores/auth"
 import { useCalendarStore } from "@/stores/calendar"
 import dayjs from "dayjs"
+import axios from "axios"
 
 const props = defineProps({
   date: { type: String, required: true },
@@ -303,6 +302,8 @@ const detailSafe = computed(() => {
       total_carb: 0,
       total_protein: 0,
       total_fat: 0,
+      total_sugar: 0,
+      total_sodiumL: 0,
       meals: [],
       condition: { emoji: "", note: "" },
       weight: { weight_kg: null },
@@ -519,7 +520,8 @@ watch(grams, (newGrams) => {
   carb.value = Number((selectedFood.value.carb * ratio).toFixed(1))
   protein.value = Number((selectedFood.value.protein * ratio).toFixed(1))
   fat.value = Number((selectedFood.value.fat * ratio).toFixed(1))
-  
+  sugar.value = Number((selectedFood.value.sugar * ratio).toFixed(1))
+  sodium.value = Number((selectedFood.value.sodium * ratio).toFixed(1))
   // mockDB에 당/나트륨이 있다면 여기서 계산 로직 추가 가능
   // 현재 DB엔 없으므로 수동 입력 유지를 위해 덮어쓰지 않음
 })
@@ -549,12 +551,50 @@ function resetSelection() {
   sodium.value = null
 }
 
-function performSearch() {
+// 백엔드 baseURL이 이미 전역 axios 인스턴스에 잡혀있으면 이 상수는 생략해도 됩니다.
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+
+async function performSearch() {
   const q = searchQuery.value.trim()
-  if (!q) return
-  const query = q.toLowerCase()
-  searchResults.value = mockFoodDB.filter((f) => f.name.toLowerCase().includes(query))
+  if (!q) {
+    searchResults.value = []
+    return
+  }
+
+  try {
+    // 백엔드 include 구조에 따라 /api prefix가 있을 가능성이 높습니다.
+    // views.py 주석도 /api/foods/search 로 되어있습니다.
+    const res = await axios.get(`${API_BASE}/foods/search/`, {
+      params: { q },
+
+      // 로그인한 사용자 custom food까지 같이 받고 싶으면 인증 헤더가 필요합니다.
+      // 아래는 예시이며, 프로젝트 인증 방식(Token/JWT)에 맞게 한 줄만 조정하세요.
+      // headers: auth.token ? { Authorization: `Bearer ${auth.token}` } : {}
+    })
+
+    const items = res.data?.items || []
+
+    // 기존 UI 로직이 item.kcal / item.carb ... 를 기대하므로 매핑해서 유지합니다.
+    searchResults.value = items.map((f) => ({
+      source: f.source,          // public | custom
+      id: f.id,
+      name: f.name,
+
+      // 백엔드는 energy_kcal / carbs_g ... 로 내려줌 :contentReference[oaicite:5]{index=5}
+      kcal: Number(f.energy_kcal || 0),
+      carb: Number(f.carbs_g || 0),
+      protein: Number(f.protein_g || 0),
+      fat: Number(f.fat_g || 0),
+      sugar: Number(f.sugars_g || 0),
+      sodium: Number(f.sodium_mg || 0),
+    }))
+  } catch (e) {
+    console.error(e)
+    searchResults.value = []
+    // 필요하면 error UI 추가
+  }
 }
+
 
 function selectFoodItem(item) {
   selectedFood.value = item
@@ -569,6 +609,8 @@ function selectFoodItem(item) {
     carb.value = Number((item.carb * ratio).toFixed(1))
     protein.value = Number((item.protein * ratio).toFixed(1))
     fat.value = Number((item.fat * ratio).toFixed(1))
+    sugar.value = Number((item.sugar * ratio).toFixed(1))
+    sodium.value = Number((item.sodium * ratio).toFixed(1))
     // 당, 나트륨은 mockDB에 없으므로 일단 유지
   }
 }
@@ -588,13 +630,11 @@ function getGroupCalories(type) {
 
 async function saveCondition() {
   await day.setCondition(condEmoji.value, condNote.value)
-  await syncMonthSummary()
 }
 
 async function saveWeight() {
   if (weight.value === null || weight.value === "") return
   await day.setWeight(weight.value)
-  await syncMonthSummary()
 
   const t = new Date()
   const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
@@ -622,7 +662,6 @@ async function addMeal() {
     sugar: Number(sugar.value || 0),
     sodium: Number(sodium.value || 0),
   })
-  await syncMonthSummary()
   const currentType = mealType.value
   resetForm()
   mealType.value = currentType
@@ -631,7 +670,7 @@ async function addMeal() {
 async function delMeal(id) {
   if (confirm("정말 삭제하시겠습니까?")) {
     await day.deleteMeal(id)
-    await syncMonthSummary()
+
   }
 }
 </script>
