@@ -17,41 +17,67 @@
       <div class="dashboard-grid">
         <div class="nutri-card total-card">
           <div class="card-label">
-            총 섭취 칼로리 
+            총 섭취 칼로리
             <span class="bmr-label">(일일 권장량 기준)</span>
           </div>
-          
-          <!-- 칼로리 / TDEE 표시 영역 -->
+
           <div class="card-value main">
             {{ Number(detailSafe.total_kcal).toFixed(0) }}
             <span class="bmr-text">/ {{ userTdeeText }}</span>
             <span class="unit">kcal</span>
           </div>
 
-          <!-- TDEE 기준 프로그래스 바 (그라데이션 적용) -->
           <div class="progress-bar-bg" aria-hidden="true">
-            <div
-              class="progress-bar-fill"
-              :style="progressBarStyle"
-            ></div>
+            <div class="progress-bar-fill" :style="progressBarStyle"></div>
           </div>
         </div>
 
         <div class="sub-stats">
           <div class="nutri-item">
-            <span class="n-label">탄수화물</span>
-            <span class="n-val">{{ Number(detailSafe.total_carb).toFixed(1) }}g</span>
+            <div class="n-left">
+              <span class="n-label">탄수화물</span>
+              <span class="n-sub">{{ goalLabel }} 권장</span>
+            </div>
+            <div class="n-right">
+              <div class="n-main">
+                <span class="n-eaten">{{ macroRows.carb.eaten.toFixed(1) }}g</span>
+                <span class="n-target">/ {{ macroRows.carb.target }}g</span>
+              </div>
+              <div class="n-pct">{{ macroRows.carb.percent }}%</div>
+            </div>
           </div>
+
           <div class="nutri-item">
-            <span class="n-label">단백질</span>
-            <span class="n-val">{{ Number(detailSafe.total_protein).toFixed(1) }}g</span>
+            <div class="n-left">
+              <span class="n-label">단백질</span>
+              <span class="n-sub">{{ goalLabel }} 권장</span>
+            </div>
+            <div class="n-right">
+              <div class="n-main">
+                <span class="n-eaten">{{ macroRows.protein.eaten.toFixed(1) }}g</span>
+                <span class="n-target">/ {{ macroRows.protein.target }}g</span>
+              </div>
+              <div class="n-pct">{{ macroRows.protein.percent }}%</div>
+            </div>
           </div>
+
           <div class="nutri-item">
-            <span class="n-label">지방</span>
-            <span class="n-val">{{ Number(detailSafe.total_fat).toFixed(1) }}g</span>
+            <div class="n-left">
+              <span class="n-label">지방</span>
+              <span class="n-sub">{{ goalLabel }} 권장</span>
+            </div>
+            <div class="n-right">
+              <div class="n-main">
+                <span class="n-eaten">{{ macroRows.fat.eaten.toFixed(1) }}g</span>
+                <span class="n-target">/ {{ macroRows.fat.target }}g</span>
+              </div>
+              <div class="n-pct">{{ macroRows.fat.percent }}%</div>
+            </div>
           </div>
         </div>
       </div>
+
+
 
       <!-- 2) 컨디션/체중 -->
       <div class="daily-check-row">
@@ -340,6 +366,105 @@ const progressBarStyle = computed(() => {
     background,
     boxShadow,
     transition: "width 0.5s ease, background 0.5s ease",
+  }
+})
+const goalType = computed(() => profile.me?.goal_type || "maintain")
+
+const goalLabel = computed(() => {
+  return goalType.value === "loss"
+    ? "체중감량"
+    : goalType.value === "gain"
+    ? "근육증가"
+    : "건강유지"
+})
+
+/**
+ * 권장 탄/단/지(g) 계산
+ * - 기준 체중: profile.me.weight가 있으면 그 값, 없으면 start_weight, 둘 다 없으면 70kg
+ * - 목표별(maintain/loss/gain)로 단백질/지방 g/kg과 목표 kcal 계수 적용
+ */
+function computeMacroTarget({ tdeeKcal, weightKg, goal }) {
+  // 목표 칼로리: 유지 1.0 / 감량 0.85 / 증량 1.10 (원하면 여기 계수만 조절)
+  const kcalFactor = goal === "loss" ? 0.85 : goal === "gain" ? 1.1 : 1.0
+  const targetKcal = Math.round(tdeeKcal * kcalFactor)
+
+  // g/kg 가이드(일반적 범위의 “앱용 기본값”)
+  const proteinPerKg = goal === "loss" ? 2.0 : goal === "gain" ? 1.8 : 1.6
+  const fatPerKg = goal === "loss" ? 0.8 : goal === "gain" ? 1.0 : 0.9
+
+  let proteinG = Math.round(weightKg * proteinPerKg)
+  let fatG = Math.round(weightKg * fatPerKg)
+
+  // 칼로리로 환산
+  const proteinKcal = proteinG * 4
+  let fatKcal = fatG * 9
+
+  // 탄수화물은 남는 칼로리로 채움
+  let carbKcal = targetKcal - (proteinKcal + fatKcal)
+
+  // 남는 칼로리가 음수면(단/지가 너무 커서) 지방부터 줄여 맞추기
+  if (carbKcal < 0) {
+    fatKcal = Math.max(targetKcal - proteinKcal, 0)
+    fatG = Math.round(fatKcal / 9)
+    carbKcal = 0
+  }
+
+  const carbG = Math.round(carbKcal / 4)
+
+  return {
+    targetKcal,
+    carbG,
+    proteinG,
+    fatG,
+  }
+}
+
+const macroTarget = computed(() => {
+  const baseW =
+    Number(profile.me?.weight) ||
+    Number(profile.me?.start_weight) ||
+    70
+
+  const tdee = userTdeeNumber.value || 2000
+
+  return computeMacroTarget({
+    tdeeKcal: tdee,
+    weightKg: baseW,
+    goal: goalType.value,
+  })
+})
+
+function pct(eaten, target) {
+  const e = Number(eaten || 0)
+  const t = Number(target || 0)
+  if (!t) return 0
+  return Math.round((e / t) * 100)
+}
+
+const macroRows = computed(() => {
+  const eatenCarb = Number(detailSafe.value.total_carb || 0)
+  const eatenProtein = Number(detailSafe.value.total_protein || 0)
+  const eatenFat = Number(detailSafe.value.total_fat || 0)
+
+  return {
+    carb: {
+      label: "탄수화물",
+      eaten: eatenCarb,
+      target: macroTarget.value.carbG,
+      percent: pct(eatenCarb, macroTarget.value.carbG),
+    },
+    protein: {
+      label: "단백질",
+      eaten: eatenProtein,
+      target: macroTarget.value.proteinG,
+      percent: pct(eatenProtein, macroTarget.value.proteinG),
+    },
+    fat: {
+      label: "지방",
+      eaten: eatenFat,
+      target: macroTarget.value.fatG,
+      percent: pct(eatenFat, macroTarget.value.fatG),
+    },
   }
 })
 
@@ -894,6 +1019,62 @@ async function delMeal(id) {
   box-shadow: 0 2px 12px rgba(0,0,0,0.04);
   border-color: #eee;
 }
+.nutri-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fdfdfd;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #f5f5f5;
+  gap: 10px;
+}
+
+.n-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.n-sub {
+  font-size: 11px;
+  color: #aaa;
+  font-weight: 600;
+}
+
+.n-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.n-main {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+
+.n-eaten {
+  font-size: 14px;
+  font-weight: 800;
+  color: #333;
+}
+
+.n-target {
+  font-size: 12px;
+  font-weight: 700;
+  color: #9ca3af;
+}
+
+.n-pct {
+  font-size: 12px;
+  font-weight: 800;
+  color: #db1f4b;
+}
+
 .mc-content { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mc-name { font-size: 14px; font-weight: 800; color: #333; }
 .mc-gram { font-size: 12px; color: var(--primary); font-weight: 600; margin-left: 4px; }

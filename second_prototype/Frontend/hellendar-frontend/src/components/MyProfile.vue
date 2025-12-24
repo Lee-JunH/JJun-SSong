@@ -105,7 +105,43 @@
             </div>
           </div>
         </div>
+                
+                <div class="form-group">
+          <label class="label">개인 목표</label>
 
+          <div class="goal-toggle">
+            <button
+              type="button"
+              class="goal-btn"
+              :class="{ active: localForm.goal_type === 'maintain' }"
+              @click="localForm.goal_type = 'maintain'"
+            >
+              🧘 건강 유지
+            </button>
+
+            <button
+              type="button"
+              class="goal-btn"
+              :class="{ active: localForm.goal_type === 'loss' }"
+              @click="localForm.goal_type = 'loss'"
+            >
+              🔥 체중감량(체지방)
+            </button>
+
+            <button
+              type="button"
+              class="goal-btn"
+              :class="{ active: localForm.goal_type === 'gain' }"
+              @click="localForm.goal_type = 'gain'"
+            >
+              💪 근육량 증가
+            </button>
+          </div>
+
+          <p class="helper-text subtle">
+            목표에 따라 권장 탄·단·지 비율이 달라집니다.
+          </p>
+        </div>
         <!-- 4. 활동량 선택 -->
         <div class="form-group">
           <label class="label" for="activity">평소 활동량</label>
@@ -160,6 +196,7 @@ const localForm = ref({
 
   start_weight: null,
   goal_weight: null,
+  goal_type: "maintain",
   activity_level: null,
 })
 
@@ -192,6 +229,7 @@ function toPayload(form) {
     height: n(form.height),
     start_weight: n(form.start_weight),
     goal_weight: n(form.goal_weight),
+    goal_type: form.goal_type || "maintain",
     activity_level: n(form.activity_level),
   }
 
@@ -369,6 +407,37 @@ async function saveProfile() {
 }
 .row-2 .form-group {
   flex: 1;
+}
+.goal-toggle {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.goal-btn {
+  border: 2px solid #f3f4f6;
+  background: #f9fafb;
+  padding: 12px;
+  border-radius: 14px;
+  font-weight: 700;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all .2s;
+  text-align: left;
+}
+
+.goal-btn.active {
+  background: #fff0f3;
+  border-color: #db1f4b;
+  color: #db1f4b;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+}
+
+.helper-text.subtle {
+  background: transparent;
+  color: #9ca3af;
+  padding: 0;
+  margin-top: 8px;
 }
 
 .input-wrapper {
