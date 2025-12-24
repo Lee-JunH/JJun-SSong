@@ -33,51 +33,41 @@
         </div>
 
         <div class="sub-stats">
-          <div class="nutri-item">
-            <div class="n-left">
-              <span class="n-label">탄수화물</span>
-              <span class="n-sub">{{ goalLabel }} 권장</span>
-            </div>
-            <div class="n-right">
-              <div class="n-main">
-                <span class="n-eaten">{{ macroRows.carb.eaten.toFixed(1) }}g</span>
-                <span class="n-target">/ {{ macroRows.carb.target }}g</span>
+          <!-- ✅ v-for로 반복 처리하여 프로그레스 바 로직 일괄 적용 -->
+          <div 
+            v-for="(item, key) in macroRows" 
+            :key="key" 
+            class="nutri-item"
+            :class="item.state"
+          >
+            <!-- 상단: 라벨 & 수치 -->
+            <div class="nutri-header">
+              <div class="n-left">
+                <span class="n-label">{{ item.label }}</span>
+                <!-- 상태별 뱃지 표시 -->
+                <span v-if="item.state === 'over'" class="state-badge warning">⚠️ 주의</span>
+                <span v-else-if="item.state === 'good'" class="state-badge success">✓ 적정</span>
+                <span v-else class="n-sub">{{ goalLabel }} 권장</span>
               </div>
-              <div class="n-pct">{{ macroRows.carb.percent }}%</div>
+              
+              <div class="n-right">
+                <div class="n-main">
+                  <span class="n-eaten">{{ item.eaten.toFixed(1) }}g</span>
+                  <span class="n-target">/ {{ item.target }}g</span>
+                </div>
+                <div class="n-pct" :style="{ color: item.color }">
+                  {{ item.percent }}%
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div class="nutri-item">
-            <div class="n-left">
-              <span class="n-label">단백질</span>
-              <span class="n-sub">{{ goalLabel }} 권장</span>
-            </div>
-            <div class="n-right">
-              <div class="n-main">
-                <span class="n-eaten">{{ macroRows.protein.eaten.toFixed(1) }}g</span>
-                <span class="n-target">/ {{ macroRows.protein.target }}g</span>
-              </div>
-              <div class="n-pct">{{ macroRows.protein.percent }}%</div>
-            </div>
-          </div>
-
-          <div class="nutri-item">
-            <div class="n-left">
-              <span class="n-label">지방</span>
-              <span class="n-sub">{{ goalLabel }} 권장</span>
-            </div>
-            <div class="n-right">
-              <div class="n-main">
-                <span class="n-eaten">{{ macroRows.fat.eaten.toFixed(1) }}g</span>
-                <span class="n-target">/ {{ macroRows.fat.target }}g</span>
-              </div>
-              <div class="n-pct">{{ macroRows.fat.percent }}%</div>
+            <!-- 하단: 개별 영양소 프로그레스 바 -->
+            <div class="macro-progress-bg">
+              <div class="macro-progress-fill" :style="item.barStyle"></div>
             </div>
           </div>
         </div>
       </div>
-
-
 
       <!-- 2) 컨디션/체중 -->
       <div class="daily-check-row">
@@ -169,16 +159,14 @@
             />
           </div>
 
+          <!-- ✅ 영양소 입력 칸 (2줄 그리드 레이아웃) -->
           <div class="nutrient-capsules">
             <div class="capsule main">
               <label>양(g)</label>
               <input v-model.number="grams" type="number" min="0" placeholder="0" aria-label="그램" />
             </div>
 
-            <div class="capsule">
-              <label>Kcal</label>
-              <input v-model.number="kcal" type="number" min="0" placeholder="0" aria-label="칼로리" />
-            </div>
+            
 
             <div class="capsule">
               <label>탄(g)</label>
@@ -190,9 +178,25 @@
               <input v-model.number="protein" type="number" min="0" step="0.1" placeholder="0" aria-label="단백질" />
             </div>
 
+            <!-- 2번째 줄 -->
             <div class="capsule">
               <label>지(g)</label>
               <input v-model.number="fat" type="number" min="0" step="0.1" placeholder="0" aria-label="지방" />
+            </div>
+
+            <div class="capsule sub">
+              <label>칼로리(Kcal)</label>
+              <input v-model.number="kcal" type="number" min="0" placeholder="0" aria-label="칼로리" />
+            </div>
+            
+            <div class="capsule">
+              <label>당(g)</label>
+              <input v-model.number="sugar" type="number" min="0" step="0.1" placeholder="0" aria-label="당류" />
+            </div>
+
+            <div class="capsule">
+              <label>나트륨(mg)</label>
+              <input v-model.number="sodium" type="number" min="0" step="1" placeholder="0" aria-label="나트륨" />
             </div>
 
             <button class="add-btn-gradient" type="button" @click="addMeal">
@@ -224,7 +228,14 @@
                       {{ m.name }} <span class="mc-gram">{{ m.grams }}g</span>
                     </div>
                     <div class="mc-nutri">
-                      {{ Number(m.kcal || 0).toFixed(0) }} kcal · 탄 {{ m.carb }} · 단 {{ m.protein }} · 지 {{ m.fat }}
+                      {{ Number(m.kcal || 0).toFixed(0) }} kcal 
+                      <span class="divider">·</span> 탄 {{ m.carb }} 
+                      <span class="divider">·</span> 단 {{ m.protein }} 
+                      <span class="divider">·</span> 지 {{ m.fat }}
+                      <!-- 리스트에도 당/나트륨 정보가 있다면 표시 -->
+                      <span v-if="m.sugar || m.sodium" class="divider">·</span>
+                      <span v-if="m.sugar" class="mc-sub-info">당 {{ m.sugar }}</span>
+                      <span v-if="m.sodium" class="mc-sub-info">나 {{ m.sodium }}</span>
                     </div>
                   </div>
                   <button class="mc-delete" type="button" @click="delMeal(m.id)" aria-label="삭제">🗑️</button>
@@ -256,11 +267,6 @@ const profile = useProfileStore()
 const auth = useAuthStore()
 const cal = useCalendarStore()
 
-/**
- * ✅ 로그인 유저가 바뀔 때만 프로필 재조회
- * - id가 없으면(로그아웃) me 비움
- * - id가 바뀌면(계정 전환) me 비우고 fetch
- */
 watch(
   () => auth.me?.id,
   async (id, prev) => {
@@ -304,10 +310,6 @@ const detailSafe = computed(() => {
   )
 })
 
-/**
- * ✅ TDEE 계산: profile.me만 신뢰
- * - 값이 없거나 NaN이면 null
- */
 const userTdeeRaw = computed(() => {
   const p = profile.me
   if (!p) return null
@@ -334,19 +336,9 @@ const userTdeeRaw = computed(() => {
   return Math.round(base * multiplier)
 })
 
-/**
- * ✅ 프로그레스 바 계산용 숫자 (0/undefined 방어)
- */
 const userTdeeNumber = computed(() => userTdeeRaw.value ?? 2000)
-
-/**
- * ✅ 템플릿 표시용 문자열 (여기서 toLocaleString 안전하게)
- */
 const userTdeeText = computed(() => userTdeeNumber.value.toLocaleString())
 
-/**
- * ✅ 프로그레스 바 스타일
- */
 const progressBarStyle = computed(() => {
   const kcal = Number(detailSafe.value.total_kcal || 0)
   const tdee = userTdeeNumber.value
@@ -368,6 +360,7 @@ const progressBarStyle = computed(() => {
     transition: "width 0.5s ease, background 0.5s ease",
   }
 })
+
 const goalType = computed(() => profile.me?.goal_type || "maintain")
 
 const goalLabel = computed(() => {
@@ -378,31 +371,20 @@ const goalLabel = computed(() => {
     : "건강유지"
 })
 
-/**
- * 권장 탄/단/지(g) 계산
- * - 기준 체중: profile.me.weight가 있으면 그 값, 없으면 start_weight, 둘 다 없으면 70kg
- * - 목표별(maintain/loss/gain)로 단백질/지방 g/kg과 목표 kcal 계수 적용
- */
 function computeMacroTarget({ tdeeKcal, weightKg, goal }) {
-  // 목표 칼로리: 유지 1.0 / 감량 0.85 / 증량 1.10 (원하면 여기 계수만 조절)
   const kcalFactor = goal === "loss" ? 0.85 : goal === "gain" ? 1.1 : 1.0
   const targetKcal = Math.round(tdeeKcal * kcalFactor)
 
-  // g/kg 가이드(일반적 범위의 “앱용 기본값”)
   const proteinPerKg = goal === "loss" ? 2.0 : goal === "gain" ? 1.8 : 1.6
   const fatPerKg = goal === "loss" ? 0.8 : goal === "gain" ? 1.0 : 0.9
 
   let proteinG = Math.round(weightKg * proteinPerKg)
   let fatG = Math.round(weightKg * fatPerKg)
 
-  // 칼로리로 환산
   const proteinKcal = proteinG * 4
   let fatKcal = fatG * 9
-
-  // 탄수화물은 남는 칼로리로 채움
   let carbKcal = targetKcal - (proteinKcal + fatKcal)
 
-  // 남는 칼로리가 음수면(단/지가 너무 커서) 지방부터 줄여 맞추기
   if (carbKcal < 0) {
     fatKcal = Math.max(targetKcal - proteinKcal, 0)
     fatG = Math.round(fatKcal / 9)
@@ -441,34 +423,54 @@ function pct(eaten, target) {
   return Math.round((e / t) * 100)
 }
 
+function getMacroStatus(percent) {
+  if (percent >= 110) {
+    return { state: "over", color: "#e53935", bg: "#e53935" } 
+  } else if (percent >= 100) {
+    return { state: "good", color: "#43a047", bg: "#43a047" } 
+  } else {
+    return { state: "normal", color: "#db1f4b", bg: "#db1f4b" } 
+  }
+}
+
 const macroRows = computed(() => {
   const eatenCarb = Number(detailSafe.value.total_carb || 0)
   const eatenProtein = Number(detailSafe.value.total_protein || 0)
   const eatenFat = Number(detailSafe.value.total_fat || 0)
 
+  const targets = {
+    carb: macroTarget.value.carbG,
+    protein: macroTarget.value.proteinG,
+    fat: macroTarget.value.fatG
+  }
+
+  const createRow = (label, eaten, target) => {
+    const percent = pct(eaten, target)
+    const status = getMacroStatus(percent)
+    const visualWidth = Math.min(percent, 100)
+
+    return {
+      label,
+      eaten,
+      target,
+      percent,
+      state: status.state,
+      color: status.color,
+      barStyle: {
+        width: `${visualWidth}%`,
+        backgroundColor: status.bg,
+        transition: 'width 0.5s ease'
+      }
+    }
+  }
+
   return {
-    carb: {
-      label: "탄수화물",
-      eaten: eatenCarb,
-      target: macroTarget.value.carbG,
-      percent: pct(eatenCarb, macroTarget.value.carbG),
-    },
-    protein: {
-      label: "단백질",
-      eaten: eatenProtein,
-      target: macroTarget.value.proteinG,
-      percent: pct(eatenProtein, macroTarget.value.proteinG),
-    },
-    fat: {
-      label: "지방",
-      eaten: eatenFat,
-      target: macroTarget.value.fatG,
-      percent: pct(eatenFat, macroTarget.value.fatG),
-    },
+    carb: createRow("탄수화물", eatenCarb, targets.carb),
+    protein: createRow("단백질", eatenProtein, targets.protein),
+    fat: createRow("지방", eatenFat, targets.fat),
   }
 })
 
-// 이하 상태/메서드들은 네 코드 그대로 유지
 const condEmoji = ref("")
 const condNote = ref("")
 const weight = ref(null)
@@ -480,6 +482,9 @@ const kcal = ref(null)
 const carb = ref(null)
 const protein = ref(null)
 const fat = ref(null)
+// ✅ 추가: 당, 나트륨
+const sugar = ref(null)
+const sodium = ref(null)
 
 const searchQuery = ref("")
 const searchResults = ref([])
@@ -514,6 +519,9 @@ watch(grams, (newGrams) => {
   carb.value = Number((selectedFood.value.carb * ratio).toFixed(1))
   protein.value = Number((selectedFood.value.protein * ratio).toFixed(1))
   fat.value = Number((selectedFood.value.fat * ratio).toFixed(1))
+  
+  // mockDB에 당/나트륨이 있다면 여기서 계산 로직 추가 가능
+  // 현재 DB엔 없으므로 수동 입력 유지를 위해 덮어쓰지 않음
 })
 
 function resetForm() {
@@ -523,6 +531,8 @@ function resetForm() {
   carb.value = null
   protein.value = null
   fat.value = null
+  sugar.value = null
+  sodium.value = null
   selectedFood.value = null
   searchQuery.value = ""
   searchResults.value = []
@@ -535,6 +545,8 @@ function resetSelection() {
   carb.value = null
   protein.value = null
   fat.value = null
+  sugar.value = null
+  sodium.value = null
 }
 
 function performSearch() {
@@ -557,6 +569,7 @@ function selectFoodItem(item) {
     carb.value = Number((item.carb * ratio).toFixed(1))
     protein.value = Number((item.protein * ratio).toFixed(1))
     fat.value = Number((item.fat * ratio).toFixed(1))
+    // 당, 나트륨은 mockDB에 없으므로 일단 유지
   }
 }
 
@@ -575,13 +588,13 @@ function getGroupCalories(type) {
 
 async function saveCondition() {
   await day.setCondition(condEmoji.value, condNote.value)
-  
+  await syncMonthSummary()
 }
 
 async function saveWeight() {
   if (weight.value === null || weight.value === "") return
   await day.setWeight(weight.value)
-  
+  await syncMonthSummary()
 
   const t = new Date()
   const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
@@ -605,10 +618,11 @@ async function addMeal() {
     carb: Number(carb.value || 0),
     protein: Number(protein.value || 0),
     fat: Number(fat.value || 0),
-    sugar: 0,
-    sodium: 0,
+    // ✅ 저장 시 추가
+    sugar: Number(sugar.value || 0),
+    sodium: Number(sodium.value || 0),
   })
-  
+  await syncMonthSummary()
   const currentType = mealType.value
   resetForm()
   mealType.value = currentType
@@ -617,11 +631,10 @@ async function addMeal() {
 async function delMeal(id) {
   if (confirm("정말 삭제하시겠습니까?")) {
     await day.deleteMeal(id)
-    
+    await syncMonthSummary()
   }
 }
 </script>
-
 
 <style scoped>
 .meal-content {
@@ -729,8 +742,8 @@ async function delMeal(id) {
 
 .progress-bar-bg {
   width: 100%;
-  height: 8px; /* 높이 약간 조정 */
-  background: rgba(0,0,0,0.06); /* 배경색 조금 더 진하게 */
+  height: 8px; 
+  background: rgba(0,0,0,0.06); 
   border-radius: 999px;
   margin-top: 12px;
   overflow: hidden;
@@ -739,10 +752,9 @@ async function delMeal(id) {
   height: 100%;
   background: var(--primary);
   border-radius: 999px;
-  /* transition은 script에서 직접 바인딩으로 처리됨 */
 }
 
-/* Sub Stats */
+/* Sub Stats (Updated) */
 .sub-stats {
   display: flex;
   flex-direction: column;
@@ -752,15 +764,80 @@ async function delMeal(id) {
 }
 .nutri-item {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column; /* 세로 정렬로 변경하여 바를 아래에 배치 */
+  justify-content: center;
   background: #fdfdfd;
-  padding: 10px 14px;
+  padding: 12px 14px;
   border-radius: 12px;
   border: 1px solid #f5f5f5;
+  gap: 8px; /* 헤더와 바 사이 간격 */
+  transition: border-color 0.2s, background-color 0.2s;
 }
+
+/* 상태별 배경/테두리 스타일 */
+.nutri-item.good {
+  background: #f1f8e9;
+  border-color: #c8e6c9;
+}
+.nutri-item.over {
+  background: #ffebee;
+  border-color: #ffcdd2;
+}
+
+.nutri-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.n-left {
+  display: flex;
+  align-items: center; /* 뱃지 정렬용 */
+  gap: 6px;
+  min-width: 0;
+}
+
+.state-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.state-badge.success { background: #43a047; color: white; }
+.state-badge.warning { background: #e53935; color: white; }
+
 .n-label { font-size: 13px; color: #666; font-weight: 500; }
-.n-val { font-size: 14px; font-weight: 700; color: #333; }
+.n-sub { font-size: 11px; color: #aaa; font-weight: 600; }
+
+.n-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.n-main {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.n-eaten { font-size: 14px; font-weight: 800; color: #333; }
+.n-target { font-size: 12px; font-weight: 700; color: #9ca3af; }
+.n-pct { font-size: 12px; font-weight: 800; }
+
+/* Micro Progress Bar */
+.macro-progress-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(0,0,0,0.05);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.macro-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+}
 
 /* Daily Check */
 .daily-check-row {
@@ -927,19 +1004,19 @@ async function delMeal(id) {
   justify-content: center;
 }
 
-/* Capsules */
+/* Capsules (Grid Updated) */
 .nutrient-capsules {
   display: grid;
-  grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr 90px;
-  gap: 6px;
-  align-items: end;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  align-items: center;
 }
 @media (max-width: 520px) {
   .nutrient-capsules {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .add-btn-gradient { width: 100%; grid-column: span 2; }
 }
+
 .capsule {
   display: flex;
   flex-direction: column;
@@ -953,6 +1030,7 @@ async function delMeal(id) {
   min-width: 0;
 }
 .capsule.main { background: #fff0f5; border-color: #fecdd6; }
+.capsule.sub { background: #fff0f5; border-color: #fecdd6; }
 .capsule label { font-size: 10px; color: #888; }
 .capsule input {
   width: 100%;
@@ -979,6 +1057,8 @@ async function delMeal(id) {
   cursor: pointer;
   box-shadow: 0 4px 10px rgba(219, 31, 75, 0.25);
   transition: transform 0.1s;
+  /* 버튼이 마지막 칸을 채우도록 */
+  width: 100%;
 }
 .add-btn-gradient:active { transform: scale(0.97); }
 
@@ -1019,66 +1099,14 @@ async function delMeal(id) {
   box-shadow: 0 2px 12px rgba(0,0,0,0.04);
   border-color: #eee;
 }
-.nutri-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: #fdfdfd;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid #f5f5f5;
-  gap: 10px;
-}
-
-.n-left {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.n-sub {
-  font-size: 11px;
-  color: #aaa;
-  font-weight: 600;
-}
-
-.n-right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  white-space: nowrap;
-}
-
-.n-main {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-}
-
-.n-eaten {
-  font-size: 14px;
-  font-weight: 800;
-  color: #333;
-}
-
-.n-target {
-  font-size: 12px;
-  font-weight: 700;
-  color: #9ca3af;
-}
-
-.n-pct {
-  font-size: 12px;
-  font-weight: 800;
-  color: #db1f4b;
-}
 
 .mc-content { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mc-name { font-size: 14px; font-weight: 800; color: #333; }
 .mc-gram { font-size: 12px; color: var(--primary); font-weight: 600; margin-left: 4px; }
 .mc-nutri { font-size: 11px; color: #999; }
+.mc-sub-info { font-size: 10px; color: #aaa; margin-left: 2px; }
+.divider { margin: 0 2px; color: #ddd; }
+
 .mc-delete {
   background: #f8f8f8;
   border: none;
