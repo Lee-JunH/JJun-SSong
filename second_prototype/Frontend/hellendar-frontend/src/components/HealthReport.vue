@@ -18,6 +18,7 @@
     <div v-else-if="error" class="state error">{{ error }}</div>
 
     <template v-else>
+      <!-- 1. 요약 섹션 -->
       <section class="summary-section">
         <div class="summary-card weight">
           <span class="label">현재 체중</span>
@@ -52,7 +53,8 @@
           </div>
         </div>
       </section>
-
+      
+      <!-- 2. 식단 도넛 차트 섹션 -->
       <section class="meal-section">
         <div class="meal-card" v-for="(item, key) in mealStats" :key="key">
           <h4 class="meal-title">{{ item.label }}</h4>
@@ -70,6 +72,53 @@
         </div>
       </section>
 
+      <!-- 구분선 및 나트륨/당 섹션 -->
+      <div class="w-full">
+        <hr class="my-8 border-gray-200" />
+
+        <section class="nutrient-section">
+          <h2 class="section-title">
+            <span class="bar-point"></span>
+            나트륨/당 섭취 분석
+          </h2>
+          
+          <div class="nutrient-summary-grid">
+            <div class="nutrient-summary-card sodium-warning">
+              <p class="label">나트륨 주의(초과)</p>
+              <p class="value sodium-text">{{ sodiumExceedCount }}일</p>
+            </div>
+            <div class="nutrient-summary-card sugar-warning">
+              <p class="label">당류 주의(초과)</p>
+              <p class="value sugar-text">{{ sugarExceedCount }}일</p>
+            </div>
+          </div>
+
+          <div class="chart-card nutrient-chart-card">
+            <div class="card-header">
+              <h3 class="font-semibold text-gray-700">🧂 나트륨 섭취 추이</h3>
+              <span class="description">권장: {{ recommendedSodium }}mg 미만</span>
+            </div>
+            <div class="canvas-wrapper h-64">
+              <canvas ref="sodiumChartRef"></canvas>
+            </div>
+            <p class="chart-info-text">* 붉은색 막대는 권장량(2,000mg) 초과일입니다.</p>
+          </div>
+
+          <div class="chart-card nutrient-chart-card">
+            <div class="card-header">
+              <h3 class="font-semibold text-gray-700">🍬 당류 섭취 추이</h3>
+              <span class="description">권장: {{ recommendedSugar }}g 미만</span>
+            </div>
+            <div class="canvas-wrapper h-64">
+              <canvas ref="sugarChartRef"></canvas>
+            </div>
+            <p class="chart-info-text">* 붉은색 막대는 권장량(50g) 초과일입니다.</p>
+          </div>
+
+        </section>
+      </div>
+
+      <!-- 3. 체중/BMI 라인 차트 섹션 -->
       <section class="charts-section">
         <div class="chart-card">
           <div class="card-header">
@@ -123,7 +172,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, onBeforeUnmount, nextTick, reactive } from "vue"
+import { ref, computed, onMounted, watch, onBeforeUnmount, nextTick } from "vue"
 import dayjs from "dayjs"
 import Chart from "chart.js/auto"
 import http from "@/api/http"
@@ -140,10 +189,18 @@ const error = ref("")
 const profile = ref(null) 
 const report = ref(null) 
 
+// 권장 섭취량 상수
+const RECOMMENDED_SODIUM = 2000;
+const RECOMMENDED_SUGAR = 50;
+
+const recommendedSodium = RECOMMENDED_SODIUM.toLocaleString();
+const recommendedSugar = RECOMMENDED_SUGAR;
+
+
 // ✅ 해당 월의 총 날짜 수 (30/31/28/29)
 const daysInMonth = computed(() => dayjs(`${selectedMonth.value}-01`).daysInMonth())
 
-// ✅ 캘린더 토글(아침/점심/저녁/영양제) 월 데이터
+// ✅ 캘린더 토글(아침/점심/저녁/영양제) 및 영양 정보 월 데이터
 const monthSummaryDays = ref([])
 
 async function fetchMonthSummary(ym) {
@@ -158,7 +215,6 @@ const bmiChartRef = ref(null)
 const bmrChartRef = ref(null)
 
 // ---- Chart refs (Meal Doughnuts) ----
-// v-for에서 ref를 객체에 담기 위해 reactive 객체 혹은 빈 객체 사용
 const mealChartRefs = ref({
   breakfast: null,
   lunch: null,
@@ -166,16 +222,16 @@ const mealChartRefs = ref({
   nutrition: null,
 })
 
+// ---- Chart refs (Nutrient Bars) ----
+const sodiumChartRef = ref(null)
+const sugarChartRef = ref(null)
+
 // 인스턴스 보관
-let lineChartInstances = []
-let mealChartInstances = []
+let chartInstances = []
 
 function destroyCharts() {
-  lineChartInstances.forEach(c => c && c.destroy())
-  lineChartInstances = []
-  
-  mealChartInstances.forEach(c => c && c.destroy())
-  mealChartInstances = []
+  chartInstances.forEach(c => c && c.destroy())
+  chartInstances = []
 }
 
 onBeforeUnmount(() => destroyCharts())
@@ -235,7 +291,7 @@ function calculateBMR(weightKg) {
   return gender === "male" ? Math.round(base + 5) : Math.round(base - 161)
 }
 
-// 5. [NEW] 식단 데이터 통계 계산
+// 5. 식단 데이터 통계 계산
 const mealStats = computed(() => {
   const denom = daysInMonth.value || 1
 
@@ -246,13 +302,11 @@ const mealStats = computed(() => {
     nutrition: { label: "영양제", count: 0, percent: 0 },
   }
 
-  // ✅ monthSummaryDays는 DayRecord들의 배열 (해당 월에 존재하는 기록일만 옴)
-  // ✅ 분모는 “월 전체 일수”, 분자는 토글 true인 일수 합산
   for (const d of (monthSummaryDays.value || [])) {
     if (d.breakfast) stats.breakfast.count++
     if (d.lunch)     stats.lunch.count++
     if (d.dinner)    stats.dinner.count++
-    if (d.nutrition) stats.nutrition.count++   // 🔥 supplement 말고 nutrition
+    if (d.nutrition) stats.nutrition.count++
   }
 
   for (const key of Object.keys(stats)) {
@@ -260,6 +314,15 @@ const mealStats = computed(() => {
   }
 
   return stats
+})
+
+// 6. 나트륨/당 초과 일수 계산
+const sodiumExceedCount = computed(() => {
+  return (monthSummaryDays.value || []).filter(d => (d.total_sodium || 0) > RECOMMENDED_SODIUM).length
+})
+
+const sugarExceedCount = computed(() => {
+  return (monthSummaryDays.value || []).filter(d => (d.total_sugar || 0) > RECOMMENDED_SUGAR).length
 })
 
 
@@ -318,7 +381,7 @@ function createLineChart(canvasEl, label, labels, data, color, yMin = null) {
   })
 }
 
-// 2. [NEW] Doughnut Chart (식단)
+// 2. Doughnut Chart (식단)
 function createDoughnutChart(canvasEl, percent, color) {
   const ctx = canvasEl.getContext("2d")
   if (!ctx) return null
@@ -329,7 +392,7 @@ function createDoughnutChart(canvasEl, percent, color) {
       labels: ["섭취", "미섭취"],
       datasets: [{
         data: [percent, 100 - percent],
-        backgroundColor: [color, "#f1f5f9"], // [활성색, 회색]
+        backgroundColor: [color, "#f1f5f9"], 
         borderWidth: 0,
         hoverOffset: 4
       }]
@@ -337,49 +400,146 @@ function createDoughnutChart(canvasEl, percent, color) {
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      cutout: "75%", // 도넛 두께 조절 (구멍 크기)
+      cutout: "75%",
       plugins: {
         legend: { display: false },
-        tooltip: { enabled: false } // 툴팁 끄기 (심플함 유지)
+        tooltip: { enabled: false }
       },
-      animation: {
-        animateScale: true,
-        animateRotate: true
+      animation: { animateScale: true, animateRotate: true }
+    }
+  })
+}
+
+// 3. Bar Chart (나트륨/당)
+function createBarChart(canvasEl, label, labels, data, threshold, baseColor, warnColor) {
+  const ctx = canvasEl.getContext("2d")
+  if (!ctx) return null
+
+  // 값에 따라 색상 결정
+  const backgroundColors = data.map(val => (val > threshold ? warnColor : baseColor));
+
+  return new Chart(canvasEl, {
+    type: "bar",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: label,
+        data: data,
+        backgroundColor: backgroundColors,
+        borderRadius: 4,
+        barPercentage: 0.6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: "#333",
+          displayColors: false,
+          callbacks: {
+            label: (ctx) => `${ctx.raw} ${label.includes('나트륨') ? 'mg' : 'g'}`
+          }
+        },
+        annotation: { // 기준선 (Chart.js annotation plugin 필요, 없으면 무시됨)
+           annotations: {
+             line1: {
+               type: 'line',
+               yMin: threshold,
+               yMax: threshold,
+               borderColor: '#94a3b8',
+               borderWidth: 1,
+               borderDash: [4, 4],
+             }
+           }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: "#f0f0f0" },
+          ticks: { font: { size: 10 } }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 } }
+        }
       }
     }
   })
 }
 
+
 async function renderCharts() {
   await nextTick()
-  destroyCharts() // 기존 차트 제거
+  destroyCharts() 
 
   if (!report.value) return
 
-  // 1. 식단 도넛 차트 렌더링
-  const colors = { breakfast: "#f59e0b", lunch: "#10b981", dinner: "#3b82f6", supplement: "#8b5cf6" } // 색상 지정
-  
+  // 1. 식단 도넛 차트
+  const colors = { breakfast: "#f59e0b", lunch: "#10b981", dinner: "#3b82f6", supplement: "#8b5cf6" }
   Object.keys(mealStats.value).forEach((key) => {
     const el = mealChartRefs.value[key]
     const stat = mealStats.value[key]
     if (el) {
-      const chart = createDoughnutChart(el, stat.percent, colors[key] || "#db1f4b")
-      if (chart) mealChartInstances.push(chart)
+      chartInstances.push(createDoughnutChart(el, stat.percent, colors[key] || "#db1f4b"))
     }
   })
 
-  // 2. 라인 차트 데이터 준비
-  const days = report.value.days || []
-  const labels = days.map(d => dayjs(d.date).format("D")) 
-  const weights = days.map(d => (d.weight_kg == null ? null : Number(d.weight_kg)))
+  // [수정] 월 전체 일수(1~N일) 기준 라벨 및 데이터 생성
+  const totalDays = daysInMonth.value
+  const fullLabels = Array.from({ length: totalDays }, (_, i) => String(i + 1))
+
+  // 2. 나트륨/당 바 차트 데이터 매핑
+  const summaryDays = monthSummaryDays.value || []
+  
+  // 날짜별 데이터 Map 생성 (빠른 조회용, key: "일")
+  const summaryMap = new Map()
+  summaryDays.forEach(d => summaryMap.set(dayjs(d.date).format("D"), d))
+
+  // 1일부터 말일까지 순회하며 데이터 채우기 (기록 없으면 0)
+  const sodiumValues = fullLabels.map(dayStr => {
+    const d = summaryMap.get(dayStr)
+    return d ? (d.total_sodium || 0) : 0
+  })
+  const sugarValues = fullLabels.map(dayStr => {
+    const d = summaryMap.get(dayStr)
+    return d ? (d.total_sugar || 0) : 0
+  })
+
+  if (sodiumChartRef.value) {
+    chartInstances.push(createBarChart(
+      sodiumChartRef.value, "나트륨", fullLabels, sodiumValues, 
+      RECOMMENDED_SODIUM, "#cbd5e1", "#db1f4b"
+    ))
+  }
+  if (sugarChartRef.value) {
+    chartInstances.push(createBarChart(
+      sugarChartRef.value, "당류", fullLabels, sugarValues, 
+      RECOMMENDED_SUGAR, "#cbd5e1", "#f97316"
+    ))
+  }
+
+  // 3. 체중/BMI 라인 차트 데이터 매핑
+  const reportDays = report.value.days || []
+  const reportMap = new Map()
+  reportDays.forEach(d => reportMap.set(dayjs(d.date).format("D"), d))
+
+  const weights = fullLabels.map(dayStr => {
+    const d = reportMap.get(dayStr)
+    return (d && d.weight_kg != null) ? Number(d.weight_kg) : null
+  })
 
   const h = profile.value?.height
-  const bmis = days.map(d => {
-    if (d.weight_kg == null || !h) return null
+  const bmis = fullLabels.map(dayStr => {
+    const d = reportMap.get(dayStr)
+    if (!d || d.weight_kg == null || !h) return null
     return Number(calculateBMI(Number(d.weight_kg), Number(h)).toFixed(1))
   })
-  const bmrs = days.map(d => {
-    if (d.weight_kg == null) return null
+  const bmrs = fullLabels.map(dayStr => {
+    const d = reportMap.get(dayStr)
+    if (!d || d.weight_kg == null) return null
     const v = calculateBMR(Number(d.weight_kg))
     return v == null ? null : v
   })
@@ -387,13 +547,11 @@ async function renderCharts() {
   const wMin = weights.filter(v => v != null)
   const wYMin = wMin.length ? Math.min(...wMin) - 2 : null
 
-  // 3. 라인 차트 렌더링
-  if (weightChartRef.value) lineChartInstances.push(createLineChart(weightChartRef.value, "체중(kg)", labels, weights, "#14b8a6", wYMin))
-  if (bmiChartRef.value) lineChartInstances.push(createLineChart(bmiChartRef.value, "BMI", labels, bmis, "#8b5cf6", 15))
-  if (bmrChartRef.value) lineChartInstances.push(createLineChart(bmrChartRef.value, "BMR(kcal)", labels, bmrs, "#f97316", null))
+  if (weightChartRef.value) chartInstances.push(createLineChart(weightChartRef.value, "체중(kg)", fullLabels, weights, "#14b8a6", wYMin))
+  if (bmiChartRef.value) chartInstances.push(createLineChart(bmiChartRef.value, "BMI", fullLabels, bmis, "#8b5cf6", 15))
+  if (bmrChartRef.value) chartInstances.push(createLineChart(bmrChartRef.value, "BMR(kcal)", fullLabels, bmrs, "#f97316", null))
 }
 
-// Watcher: 로딩 완료 및 데이터 존재 시 렌더링
 watch(
   [loading, report, profile, monthSummaryDays],
   async ([newLoading, newReport, newProfile]) => {
@@ -418,11 +576,7 @@ async function loadAll(ym = selectedMonth.value) {
   try {
     if (!profile.value) await fetchProfile()
     await fetchAvailableMonths()
-
-    // ✅ 리포트(체중/BMI/BMR용) 데이터
     await fetchMonthlyReport(ym)
-
-    // ✅ 토글(아침/점심/저녁/영양제) 데이터
     await fetchMonthSummary(ym)
   } catch (e) {
     console.error(e)
@@ -443,7 +597,7 @@ onMounted(() => { loadAll() })
   font-family: 'AritaDotumKR', sans-serif;
   display: flex;
   flex-direction: column;
-  gap: 24px; /* 간격 조금 늘림 */
+  gap: 24px;
 }
 .report-header {
   display: flex;
@@ -507,13 +661,12 @@ onMounted(() => { loadAll() })
 .change-badge.plus { background: #fef2f2; color: #dc2626; }
 .change-badge.neutral { background: #f3f4f6; color: #6b7280; }
 
-/* --- [NEW] 식단(도넛 차트) 섹션 --- */
+/* 식단(도넛 차트) 섹션 */
 .meal-section {
   display: grid;
-  grid-template-columns: repeat(4, 1fr); /* 4열 배치 */
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
-
 .meal-card {
   background: #fff;
   border-radius: 20px;
@@ -524,21 +677,17 @@ onMounted(() => { loadAll() })
   align-items: center;
   gap: 12px;
 }
-
 .meal-title {
   margin: 0;
   font-size: 1rem;
   font-weight: 700;
   color: #334155;
 }
-
 .doughnut-wrapper {
   position: relative;
   width: 120px;
   height: 120px;
 }
-
-/* 차트 중앙 텍스트 */
 .center-text {
   position: absolute;
   top: 50%;
@@ -547,7 +696,7 @@ onMounted(() => { loadAll() })
   display: flex;
   flex-direction: column;
   align-items: center;
-  pointer-events: none; /* 클릭 통과 */
+  pointer-events: none;
 }
 .center-text .percent {
   font-size: 1.2rem;
@@ -560,6 +709,72 @@ onMounted(() => { loadAll() })
   color: #94a3b8;
   margin-top: 2px;
 }
+
+/* --- [NEW] 나트륨/당 섹션 스타일 --- */
+.nutrient-section {
+  /* Tailwind 대체 스타일 */
+  margin-bottom: 20px;
+}
+.section-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+}
+.bar-point {
+  width: 8px;
+  height: 24px;
+  background-color: #db1f4b;
+  border-radius: 999px;
+  margin-right: 8px;
+}
+
+/* 나트륨/당 요약 카드 그리드 */
+.nutrient-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.nutrient-summary-card {
+  padding: 16px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+.nutrient-summary-card.sodium-warning {
+  background-color: #fef2f2; /* red-50 */
+  border: 1px solid #fee2e2; /* red-100 */
+}
+.nutrient-summary-card.sugar-warning {
+  background-color: #fff7ed; /* orange-50 */
+  border: 1px solid #ffedd5; /* orange-100 */
+}
+.nutrient-summary-card .label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+.nutrient-summary-card .value {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.sodium-text { color: #db1f4b; }
+.sugar-text { color: #f97316; }
+
+/* 나트륨/당 차트 카드 */
+.nutrient-chart-card {
+  margin-bottom: 24px;
+}
+.chart-info-text {
+  text-align: center;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  margin-top: 8px;
+}
+
 
 /* 차트 카드 공통 */
 .charts-section {
@@ -590,6 +805,7 @@ onMounted(() => { loadAll() })
 /* 모바일 대응 */
 @media (max-width: 860px) {
   .summary-section { grid-template-columns: 1fr; }
-  .meal-section { grid-template-columns: 1fr 1fr; } /* 모바일은 2열 */
+  .meal-section { grid-template-columns: 1fr 1fr; } 
+  .nutrient-summary-grid { grid-template-columns: 1fr 1fr; }
 }
 </style>
