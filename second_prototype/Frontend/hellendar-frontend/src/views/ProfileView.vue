@@ -139,9 +139,16 @@ async function fetchProfile() {
 
     // ✅ “최초 1회 자동 오픈” 판단 로직 (백엔드 flag 없어도 동작)
     const p = profileData.value
+
+    // 일부 구현(또는 서버 응답)에서는 `weight` 대신 `start_weight`만 있는 경우가 있음.
+    // 이런 경우를 위해 start_weight를 fallback으로 사용해서 최초 오픈 판단을 해야 함.
+    const hasWeight =
+      (p?.weight !== null && p?.weight !== undefined && p?.weight !== "") ||
+      (p?.start_weight !== null && p?.start_weight !== undefined && p?.start_weight !== "")
+
     const isComplete =
       !!p?.height &&
-      !!p?.weight &&
+      !!hasWeight &&
       !!p?.gender &&
       (p?.activity_level !== null && p?.activity_level !== undefined)
 
