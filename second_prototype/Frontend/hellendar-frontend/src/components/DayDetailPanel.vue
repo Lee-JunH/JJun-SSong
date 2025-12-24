@@ -217,6 +217,8 @@ import { computed, ref, watch } from "vue"
 import { useDayStore } from "@/stores/day"
 import { useProfileStore } from "@/stores/profile"
 import { useAuthStore } from "@/stores/auth"
+import { useCalendarStore } from "@/stores/calendar"
+import dayjs from "dayjs"
 
 const props = defineProps({
   date: { type: String, required: true },
@@ -226,6 +228,7 @@ defineEmits(["close"])
 const day = useDayStore()
 const profile = useProfileStore()
 const auth = useAuthStore()
+const cal = useCalendarStore()
 
 /**
  * ✅ 로그인 유저가 바뀔 때만 프로필 재조회
@@ -447,11 +450,13 @@ function getGroupCalories(type) {
 
 async function saveCondition() {
   await day.setCondition(condEmoji.value, condNote.value)
+  await syncMonthSummary()
 }
 
 async function saveWeight() {
   if (weight.value === null || weight.value === "") return
   await day.setWeight(weight.value)
+  await syncMonthSummary()
 
   const t = new Date()
   const todayStr = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, "0")}-${String(t.getDate()).padStart(2, "0")}`
@@ -478,6 +483,7 @@ async function addMeal() {
     sugar: 0,
     sodium: 0,
   })
+  await syncMonthSummary()
   const currentType = mealType.value
   resetForm()
   mealType.value = currentType
@@ -486,6 +492,7 @@ async function addMeal() {
 async function delMeal(id) {
   if (confirm("정말 삭제하시겠습니까?")) {
     await day.deleteMeal(id)
+    await syncMonthSummary()
   }
 }
 </script>

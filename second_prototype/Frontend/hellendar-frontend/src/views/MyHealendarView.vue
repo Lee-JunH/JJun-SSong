@@ -16,7 +16,7 @@
           <a 
             href="#" 
             :class="{ active: currentView === 'report' }" 
-            @click.prevent="currentView = 'report'"
+            @click.prevent="goReportWithReload"
           >리포트</a>
         </div>
       </div>
@@ -71,8 +71,8 @@
       </div>
 
       <!-- B. 리포트 화면 -->
-      <div class="report-wrapper" v-else-if="currentView === 'report'">
-        <HealthReport />
+      <div class="report-wrapper" v-show="currentView === 'report'">
+        <HealthReport :active="currentView === 'report'" />
       </div>
     </main>
 
@@ -100,7 +100,7 @@
 
 <script setup>
 import dayjs from "dayjs"
-import { ref, onMounted } from "vue"
+import { ref, onMounted, watch } from "vue"
 import { useCalendarStore } from "@/stores/calendar"
 import MonthCalendar from "@/components/MonthCalendar.vue"
 import DayDetailPanel from "@/components/DayDetailPanel.vue"
@@ -121,8 +121,35 @@ const transitionDirection = ref('slide-next')
 const activeBtn = ref(null)
 
 onMounted(async () => {
+  // ✅ 새로고침 후 리포트 자동 오픈 플래그 처리
+  const nextView = sessionStorage.getItem("healendar_next_view")
+  if (nextView) {
+   currentView.value = nextView
+    sessionStorage.removeItem("healendar_next_view")
+  }
+
   await cal.fetchMonth(month.value)
 })
+
+watch(
+  () => currentView.value,
+  async (v) => {
+    if (v === "report") {
+      await cal.fetchMonth(month.value)
+    }
+  }
+)
+
+function goReportWithReload() {
+  // 이미 리포트면 굳이 새로고침 안 함(원하면 제거 가능)
+  if (currentView.value === "report") return
+
+  // ✅ 새로고침 후 리포트로 열리게 플래그 저장
+  sessionStorage.setItem("healendar_next_view", "report")
+
+  // ✅ “리포트 선택 시 자동 새로고침 1회”
+  window.location.reload()
+}
 
 async function onChangeMonth(m) {
   // 현재 달과 새로운 달을 비교하여 방향 결정
@@ -306,6 +333,7 @@ async function toggleMeal(date, mealType) {
   opacity: 0.5;
   transform: scale(1);
   transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  outline: none;
 }
 
 .meal-btn:hover {
@@ -318,11 +346,9 @@ async function toggleMeal(date, mealType) {
   filter: grayscale(0%);
   opacity: 1;
   box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+  outline: none;
 }
 
-.meal-btn:active, .meal-btn.clicked {
-  transform: scale(0.9);
-}
 
 .meal-btn:nth-child(1).active { background-color: #FFB74D; }
 .meal-btn:nth-child(2).active { background-color: #81C784; }

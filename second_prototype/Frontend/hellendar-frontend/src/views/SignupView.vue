@@ -1,5 +1,6 @@
 <template>
   <section class="signup-page">
+    <div class="bg-flow" aria-hidden="true"></div>
     <div class="panel" role="region" aria-label="회원가입">
       <div class="badge" aria-hidden="true">
         <!-- user + plus icon -->
@@ -158,18 +159,36 @@ function goLogin() {
   place-items: center;
   padding: 48px 16px;
 
-  /* LoginView와 동일한 배경 */
+  /* ✅ 배경은 bg-flow가 담당 */
+  position: relative;
+  overflow: hidden; /* 배경 레이어가 튀어나오지 않게 */
+}
+
+/* ✅ 배경만 애니메이션 */
+.bg-flow {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+
+  /* 기존 배경 그대로 가져오되, "움직이기" 위해 size 크게 */
   background:
     radial-gradient(1100px 620px at 18% 18%, rgba(236, 53, 99, 0.55), transparent 62%),
     radial-gradient(900px 520px at 86% 22%, rgba(255, 217, 225, 0.32), transparent 60%),
     radial-gradient(900px 720px at 22% 90%, rgba(255, 191, 208, 0.45), transparent 58%),
     radial-gradient(760px 540px at 82% 86%, rgba(221, 156, 173, 0.18), transparent 62%),
     linear-gradient(135deg, #99717d 0%, #d37189 42%, #a31f3e 100%);
+
+  background-size: 220% 220%;
+  animation: bgFlow 14s ease-in-out infinite alternate;
+  filter: saturate(1.05);
 }
+
 
 /* 카드(유리 느낌) */
 .panel {
   position: relative;
+  z-index: 1;
   width: min(560px, 92vw);
   padding: 56px 44px 34px;
   border-radius: 8px;
@@ -304,5 +323,15 @@ input::placeholder {
   .panel {
     padding: 54px 18px 26px;
   }
+}
+@keyframes bgFlow {
+  0%   { background-position: 0% 40%; }
+  50%  { background-position: 70% 60%; }
+  100% { background-position: 40% 0%; }
+}
+
+/* 모션 최소화 설정 존중 */
+@media (prefers-reduced-motion: reduce) {
+  .bg-flow { animation: none; }
 }
 </style>
