@@ -1,23 +1,48 @@
 from rest_framework import serializers
 from .models import Food, CustomFood, FoodFavorite
 
+
 class FoodSearchItemSerializer(serializers.Serializer):
-    source = serializers.CharField()
+    """검색 응답(공용 Food + CustomFood 통합)용"""
+
+    source = serializers.ChoiceField(choices=["public", "custom"])
     id = serializers.IntegerField(required=False)
     name = serializers.CharField()
-    per_100g_kcal = serializers.FloatField()
-    per_100g_carb = serializers.FloatField()
-    per_100g_protein = serializers.FloatField()
-    per_100g_fat = serializers.FloatField()
-    per_100g_sugar = serializers.FloatField()
-    per_100g_sodium = serializers.FloatField()
+
+    energy_kcal = serializers.DecimalField(max_digits=8, decimal_places=1)
+    carbs_g = serializers.DecimalField(max_digits=8, decimal_places=1)
+    protein_g = serializers.DecimalField(max_digits=8, decimal_places=1)
+    fat_g = serializers.DecimalField(max_digits=8, decimal_places=1)
+    sugars_g = serializers.DecimalField(max_digits=8, decimal_places=1)
+    sodium_mg = serializers.DecimalField(max_digits=9, decimal_places=1)
+
 
 class CustomFoodCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomFood
-        fields = ["id","name","per_100g_kcal","per_100g_carb","per_100g_protein","per_100g_fat","per_100g_sugar","per_100g_sodium"]
+        fields = [
+            "id",
+            "name",
+            "energy_kcal",
+            "carbs_g",
+            "protein_g",
+            "fat_g",
+            "sugars_g",
+            "sodium_mg",
+        ]
+
 
 class FavoriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = FoodFavorite
-        fields = ["id","name","per_100g_kcal","per_100g_carb","per_100g_protein","per_100g_fat","per_100g_sugar","per_100g_sodium","created_at"]
+        fields = [
+            "id",
+            "name",
+            "energy_kcal",
+            "carbs_g",
+            "protein_g",
+            "fat_g",
+            "sugars_g",
+            "sodium_mg",
+            "created_at",
+        ]

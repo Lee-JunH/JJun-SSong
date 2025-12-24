@@ -1,5 +1,10 @@
 from django.urls import path
-from .views import FoodSearchView, CustomFoodCreateView, FavoritesView, FavoriteDeleteView
+from .views import (
+    FoodSearchView,
+    CustomFoodCreateView,
+    FavoritesView,
+    FavoriteDeleteView,
+)
 
 urlpatterns = [
     path("foods/search/", FoodSearchView.as_view()),

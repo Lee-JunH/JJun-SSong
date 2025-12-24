@@ -7094,18 +7094,6 @@
   {
     "model": "nutrition.Food",
     "fields": {
-      "name": "달걀 삶은것",
-      "energy_kcal": "145.0",
-      "carbs_g": "1.4",
-      "protein_g": "13.5",
-      "fat_g": "8.7",
-      "sugars_g": "0.1",
-      "sodium_mg": "128.0"
-    }
-  },
-  {
-    "model": "nutrition.Food",
-    "fields": {
       "name": "달걀 생것",
       "energy_kcal": "136.0",
       "carbs_g": "0.8",
@@ -30290,18 +30278,6 @@
   {
     "model": "nutrition.Food",
     "fields": {
-      "name": "참기름",
-      "energy_kcal": "920.0",
-      "carbs_g": "0.1",
-      "protein_g": "0.0",
-      "fat_g": "99.8",
-      "sugars_g": "0.0",
-      "sodium_mg": "0.0"
-    }
-  },
-  {
-    "model": "nutrition.Food",
-    "fields": {
       "name": "참깨 검정깨 말린것",
       "energy_kcal": "549.0",
       "carbs_g": "26.4",
@@ -33626,18 +33602,6 @@
   {
     "model": "nutrition.Food",
     "fields": {
-      "name": "포도씨유",
-      "energy_kcal": "920.0",
-      "carbs_g": "0.0",
-      "protein_g": "0.0",
-      "fat_g": "99.9",
-      "sugars_g": "0.0",
-      "sodium_mg": "1.0"
-    }
-  },
-  {
-    "model": "nutrition.Food",
-    "fields": {
       "name": "포도즙 천연과즙",
       "energy_kcal": "48.0",
       "carbs_g": "12.6",
@@ -34190,18 +34154,6 @@
   {
     "model": "nutrition.Food",
     "fields": {
-      "name": "해바라기유",
-      "energy_kcal": "919.0",
-      "carbs_g": "0.2",
-      "protein_g": "0.0",
-      "fat_g": "99.8",
-      "sugars_g": "0.0",
-      "sodium_mg": "2.0"
-    }
-  },
-  {
-    "model": "nutrition.Food",
-    "fields": {
       "name": "해삼 내장 젓갈",
       "energy_kcal": "45.0",
       "carbs_g": "0.8",
@@ -34329,18 +34281,6 @@
       "fat_g": "68.8",
       "sugars_g": "2.5",
       "sodium_mg": "4.0"
-    }
-  },
-  {
-    "model": "nutrition.Food",
-    "fields": {
-      "name": "호두유",
-      "energy_kcal": "917.0",
-      "carbs_g": "0.4",
-      "protein_g": "0.0",
-      "fat_g": "99.6",
-      "sugars_g": "0.0",
-      "sodium_mg": "0.0"
     }
   },
   {
