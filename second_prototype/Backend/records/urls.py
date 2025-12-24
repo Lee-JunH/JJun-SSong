@@ -8,6 +8,9 @@ from .views import (
     UpsertWeightView,
     UpsertConditionView,
     UpdateMealTogglesView,
+    # ✅ 추가
+    ReportAvailableMonthsView,
+    MonthlyReportView,
 )
 
 urlpatterns = [
@@ -19,4 +22,8 @@ urlpatterns = [
     path("days/<str:day_str>/weight/", UpsertWeightView.as_view()),
     path("days/<str:day_str>/condition/", UpsertConditionView.as_view()),
     path("days/<str:day_str>/toggles/", UpdateMealTogglesView.as_view()),
+
+    # ✅ 리포트 API
+    path("reports/available-months/", ReportAvailableMonthsView.as_view()),
+    path("reports/monthly/", MonthlyReportView.as_view()),
 ]
