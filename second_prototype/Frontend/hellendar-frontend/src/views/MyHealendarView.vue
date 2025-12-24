@@ -403,18 +403,38 @@ async function toggleMeal(date, mealType) {
 }
 
 .close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
+  /* ✅ 기본 버튼 외형 제거 */
+  appearance: none;
+  -webkit-appearance: none;
+
+  /* ✅ 고정 크기 아이콘 버튼 */
+  width: 45px;
+  height: 45px;
+  padding: 0;
+  margin: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* ✅ 프로필 모달과 동일 톤(작은 라운드 사각형) */
+  background: #fff;
+
+  font-size: 20px;
   line-height: 1;
+  color: #9ca3af;
   cursor: pointer;
-  color: #ced4da;
-  transition: all 0.2s;
+
+  outline: none;
+  box-shadow: none;
+
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.08s;
 }
 
-.close-btn:hover { 
-  color: #495057; 
-  transform: rotate(90deg);
+.close-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+  color: #374151;
 }
 
 .modal-body { padding: 0; flex: 1; overflow-y: auto; }

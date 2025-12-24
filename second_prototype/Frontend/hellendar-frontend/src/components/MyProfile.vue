@@ -305,14 +305,34 @@ async function saveProfile() {
   position: absolute;
   top: 20px;
   right: 20px;
-  background: none;
-  border: none;
-  font-size: 20px;
-  color: #9ca3af;
+
+  /* ✅ 아이콘 버튼 고정 크기 */
+  width: 36px;
+  height: 36px;
+  padding: 0;                 /* 기본 padding 제거 */
+  margin: 0;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  /* ✅ 기본 버튼 외형 초기화 */
+  background: #fff;
+  appearance: none;
+  -webkit-appearance: none;
+
+  /* ✅ X 정렬/크기 안정화 */
+  font-size: 18px;
+  line-height: 1;
+  color: #6b7280;
+
   cursor: pointer;
-  padding: 8px;
-  border-radius: 50%;
-  transition: background 0.2s;
+
+  /* ✅ 클릭 시 생기는 outline/box-shadow(전역 스타일 포함) 방지 */
+  outline: none;
+  box-shadow: none;
+
+  transition: background 0.2s, border-color 0.2s, color 0.2s, transform 0.08s;
 }
 .close-btn:hover {
   background: #f3f4f6;
