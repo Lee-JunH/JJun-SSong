@@ -1,6 +1,11 @@
 from django.conf import settings
 from django.db import models
 
+GOAL_CHOICES = [
+    ("maintain", "건강 유지"),
+    ("loss", "체중감량(체지방 감소)"),
+    ("gain", "근육량 증가(벌크업)"),
+]
 
 class Profile(models.Model):
     user = models.OneToOneField(
@@ -15,6 +20,11 @@ class Profile(models.Model):
     weight = models.FloatField(null=True, blank=True)  # kg
     start_weight = models.FloatField(null=True, blank=True)  # kg
     goal_weight = models.FloatField(null=True, blank=True)  # kg
+    goal_type = models.CharField(
+        max_length=20,
+        choices=GOAL_CHOICES,
+        default="maintain",
+    )
     activity_level = models.PositiveSmallIntegerField(null=True, blank=True)  # 1~5
 
     created_at = models.DateTimeField(auto_now_add=True)

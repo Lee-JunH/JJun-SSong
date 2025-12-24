@@ -12,6 +12,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             "weight",
             "start_weight",
             "goal_weight",
+            "goal_type",
             "activity_level",
             "updated_at",
         ]
