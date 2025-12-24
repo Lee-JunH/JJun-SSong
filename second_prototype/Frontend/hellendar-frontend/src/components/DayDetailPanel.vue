@@ -221,12 +221,12 @@
                 <span class="total-kcal">{{ getGroupCalories(type) }} kcal</span>
               </div>
 
-              <div class="meal-cards">
-                <div v-for="m in getMeals(type)" :key="m.id" class="meal-card-item">
-                  <div class="mc-content">
-                    <div class="mc-name">
-                      {{ m.name }} <span class="mc-gram">{{ m.grams }}g</span>
-                    </div>
+              <div v-for="m in getMeals(type)" :key="m.id" class="meal-card-item">
+                <div class="mc-content">
+                  <div class="mc-name">
+                    {{ m.name }}
+                    <span class="mc-gram">{{ m.grams }}g</span>
+                    <span v-if="!m.food_id" class="badge-manual">✏️ 직접입력</span>
                     <div class="mc-nutri">
                       {{ Number(m.kcal || 0).toFixed(0) }} kcal 
                       <span class="divider">·</span> 탄 {{ m.carb }}g
@@ -650,6 +650,7 @@ async function saveWeight() {
 
 async function addMeal() {
   if (!foodName.value.trim()) return
+
   await day.addMeal({
     meal_type: mealType.value,
     name: foodName.value.trim(),
@@ -658,10 +659,14 @@ async function addMeal() {
     carb: Number(carb.value || 0),
     protein: Number(protein.value || 0),
     fat: Number(fat.value || 0),
-    // ✅ 저장 시 추가
     sugar: Number(sugar.value || 0),
     sodium: Number(sodium.value || 0),
+    
+    // ✅ 추가된 부분: 선택된 음식이 있으면 ID 전송, 없으면(직접입력) null
+    // (백엔드 모델에 food_id 필드가 있다고 가정합니다. 없다면 note 등에 'manual'이라고 적어서 보내야 합니다.)
+    food_id: selectedFood.value ? selectedFood.value.id : null 
   })
+
   const currentType = mealType.value
   resetForm()
   mealType.value = currentType
@@ -1139,9 +1144,27 @@ async function delMeal(id) {
   border-color: #eee;
 }
 
+/* ... 기존 스타일 ... */
+
+/* ✅ 직접입력 배지 스타일 */
+.badge-manual {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 600;
+  color: #757575;
+  background-color: #f0f0f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  border: 1px solid #e0e0e0;
+}
+
+/* 기존 mc-gram 위치 조정 (배지 뒤에 오므로 간격 조정) */
+
 .mc-content { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mc-name { font-size: 14px; font-weight: 800; color: #333; }
-.mc-gram { font-size: 12px; color: var(--primary); font-weight: 600; margin-left: 4px; }
+.mc-gram { font-size: 12px; color: var(--primary); font-weight: 600; margin-left: 6px; }
 .mc-nutri { font-size: 11px; color: #999; }
 .mc-sub-info { font-size: 10px; color: #aaa; margin-left: 2px; }
 .divider { margin: 0 2px; color: #ddd; }
